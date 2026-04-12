@@ -137,9 +137,9 @@ export default function VerifikasiSPJ({ dataSPJ, setDataSPJ, realisasiGU, setRea
       <div className="bg-gray-50 p-4 rounded-lg border">
         <h4 className="font-bold mb-3 text-[#0A192F]">{label}</h4>
         <div className="space-y-3">
-          <InputField label="Kode Billing" value={pajakData[`billing_${ppnKey}`] || ''} onChange={e => setPajakData({...pajakData, [`billing_${ppnKey}`]: e.target.value})} />
-          <InputField label="NTPN" value={pajakData[`ntpn_${ppnKey}`] || ''} onChange={e => setPajakData({...pajakData, [`ntpn_${ppnKey}`]: e.target.value})} />
-          <InputField label="NTB" value={pajakData[`ntb_${ppnKey}`] || ''} onChange={e => setPajakData({...pajakData, [`ntb_${ppnKey}`]: e.target.value})} />
+          <InputField label="Kode Billing" value={pajakData[`billing_${ppnKey}`] || ''} onChange={e => setPajakData({...pajakData, [`billing_${ppnKey}`]: e.target.value.replace(/[^0-9]/g, '').slice(0, 15)})} />
+          <InputField label="NTPN" value={pajakData[`ntpn_${ppnKey}`] || ''} onChange={e => setPajakData({...pajakData, [`ntpn_${ppnKey}`]: e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 16)})} />
+          <InputField label="NTB" value={pajakData[`ntb_${ppnKey}`] || ''} onChange={e => setPajakData({...pajakData, [`ntb_${ppnKey}`]: e.target.value.replace(/[^0-9]/g, '').slice(0, 12)})} />
         </div>
       </div>
     );

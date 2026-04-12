@@ -1,6 +1,5 @@
-// File: src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Wallet, ChevronDown, ChevronRight, Menu, CheckCircle2, AlertCircle, Users, ReceiptText, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Wallet, ChevronDown, ChevronRight, Menu, CheckCircle2, AlertCircle, Users, ReceiptText, ShieldCheck, FileText } from 'lucide-react';
 
 // Import Komfigurasi & Helper
 import { GAS_URL, theme } from './config/constants';
@@ -11,6 +10,7 @@ import { FormProgram, FormKegiatan, FormSubKegiatan, FormRekening } from './comp
 import { FormPegawaiASN, FormWPPribadi, FormWPPihakKetiga } from './components/WajibPajak';
 import { FormRealisasiGU, FormCetakSPJ, PrintLayout } from './components/Realisasi';
 import VerifikasiSPJ from './components/VerifikasiSPJ';
+import { LaporanRekapGU, LaporanCoreTax, LaporanSIMDTH } from './components/Laporan';
 
 export default function App() {
   const [activeMenu, setActiveMenu] = useState('dashboard');
@@ -19,6 +19,7 @@ export default function App() {
   const [anggaranMenuOpen, setAnggaranMenuOpen] = useState(false);
   const [wpMenuOpen, setWpMenuOpen] = useState(false); 
   const [realisasiMenuOpen, setRealisasiMenuOpen] = useState(true); 
+  const [laporanMenuOpen, setLaporanMenuOpen] = useState(false); 
   
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [modal, setModal] = useState({ show: false, status: 'loading', message: '' });
@@ -32,6 +33,8 @@ export default function App() {
   const [wpPihakKetiga, setWPPihakKetiga] = useState([]);
   const [realisasiGU, setRealisasiGU] = useState([]); 
   const [dataSPJ, setDataSPJ] = useState([]);
+  const [kop21, setKop21] = useState([]);
+  const [kopUNI, setKopUNI] = useState([]);
 
   const [printData, setPrintData] = useState(null);
   const isLoading = modal.show && modal.status === 'loading';
@@ -57,6 +60,8 @@ export default function App() {
           setWPPribadi(result.data.wppribadi || []);
           setWPPihakKetiga(result.data.wppihakketiga || []);
           setDataSPJ(result.data.dataspj || []);
+          setKop21(result.data.kop21 || []);
+          setKopUNI(result.data.kopuni || []);
           
           const formattedRealisasi = (result.data.realisasigu || []).map((r, idx) => {
             const uniqueId = r.timestamp ? String(r.timestamp) : `temp_${idx}_${Date.now()}`;
@@ -205,6 +210,22 @@ export default function App() {
               </div>
             )}
           </div>
+          <div className="pt-2">
+            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setLaporanMenuOpen(!laporanMenuOpen); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5 group">
+              <div className="flex items-center">
+                <FileText size={20} style={{ color: activeMenu.startsWith('laporan_') ? theme.gold : '#9ca3af' }} className="shrink-0" />
+                {sidebarOpen && <span className="ml-3 font-medium text-white">Laporan</span>}
+              </div>
+              {sidebarOpen && (laporanMenuOpen ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
+            </button>
+            {sidebarOpen && laporanMenuOpen && (
+              <div className="mt-1 ml-4 pl-4 border-l border-gray-700 space-y-1">
+                <button onClick={() => setActiveMenu('laporan_rekap_gu')} className={`w-full text-left py-2 px-3 rounded-md text-sm transition-colors ${activeMenu === 'laporan_rekap_gu' ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>Rekapitulasi GU</button>
+                <button onClick={() => setActiveMenu('laporan_coretax')} className={`w-full text-left py-2 px-3 rounded-md text-sm transition-colors ${activeMenu === 'laporan_coretax' ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>Laporan CoreTax</button>
+                <button onClick={() => setActiveMenu('laporan_simdth')} className={`w-full text-left py-2 px-3 rounded-md text-sm transition-colors ${activeMenu === 'laporan_simdth' ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>Laporan SIMDTH</button>
+              </div>
+            )}
+          </div>
         </nav>
       </aside>
 
@@ -217,7 +238,7 @@ export default function App() {
         <div className="flex-1 overflow-auto p-8">
           <div key={activeMenu} className="animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out fill-mode-both">
             {/* ROUTING KONTEN */}
-            {activeMenu === 'dashboard' && <DashboardView programs={programs} kegiatans={kegiatans} subKegiatans={subKegiatans} rekenings={rekenings} />}
+            {activeMenu === 'dashboard' && <DashboardView programs={programs} kegiatans={kegiatans} subKegiatans={subKegiatans} rekenings={rekenings} realisasiGU={realisasiGU} />}
             
             {activeMenu === 'input_program' && <FormProgram onSave={handleSaveData} isLoading={isLoading} />}
             {activeMenu === 'input_kegiatan' && <FormKegiatan onSave={handleSaveData} isLoading={isLoading} programs={programs} />}
@@ -228,9 +249,13 @@ export default function App() {
             {activeMenu === 'wp_pribadi' && <FormWPPribadi onSave={handleSaveData} isLoading={isLoading} />}
             {activeMenu === 'wp_pihakketiga' && <FormWPPihakKetiga onSave={handleSaveData} isLoading={isLoading} />}
             
-            {activeMenu === 'realisasi_gu' && <FormRealisasiGU onSave={handleSaveData} isLoading={isLoading} subKegiatans={subKegiatans} rekenings={rekenings} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} pegawaiASN={pegawaiASN} wpPribadi={wpPribadi} wpPihakKetiga={wpPihakKetiga} showToast={showToast} />}
+            {activeMenu === 'realisasi_gu' && <FormRealisasiGU onSave={handleSaveData} isLoading={isLoading} subKegiatans={subKegiatans} rekenings={rekenings} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} pegawaiASN={pegawaiASN} wpPribadi={wpPribadi} wpPihakKetiga={wpPihakKetiga} showToast={showToast} kop21={kop21} kopUNI={kopUNI} />}
             {activeMenu === 'cetak_spj' && <FormCetakSPJ rekenings={rekenings} subKegiatans={subKegiatans} kegiatans={kegiatans} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} dataSPJ={dataSPJ} setDataSPJ={setDataSPJ} pegawaiASN={pegawaiASN} setPrintData={setPrintData} printedNotes={printedNotes} setPrintedNotes={setPrintedNotes} onUpdate={handleUpdateData} isLoading={isLoading} showToast={showToast} />}
             {activeMenu === 'verifikasi_spj' && <VerifikasiSPJ dataSPJ={dataSPJ} setDataSPJ={setDataSPJ} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} rekenings={rekenings} subKegiatans={subKegiatans} kegiatans={kegiatans} pegawaiASN={pegawaiASN} setPrintData={setPrintData} showToast={showToast} />}
+            
+            {activeMenu === 'laporan_rekap_gu' && <LaporanRekapGU realisasiGU={realisasiGU} rekenings={rekenings} subKegiatans={subKegiatans} />}
+            {activeMenu === 'laporan_coretax' && <LaporanCoreTax realisasiGU={realisasiGU} />}
+            {activeMenu === 'laporan_simdth' && <LaporanSIMDTH dataSPJ={dataSPJ} />}
           </div>
         </div>
 

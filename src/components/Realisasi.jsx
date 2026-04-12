@@ -5,12 +5,28 @@ import { theme, GAS_URL } from '../config/constants';
 import { formatRupiah, formatTanggal, terbilang } from '../utils/helpers';
 import logoSurakarta from '../assets/logo-surakarta.png';
 
-export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, realisasiGU, setRealisasiGU, pegawaiASN, wpPribadi, wpPihakKetiga, showToast }) => {
+export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, realisasiGU, setRealisasiGU, pegawaiASN, wpPribadi, wpPihakKetiga, showToast, kop21, kopUNI }) => {
   const [formData, setFormData] = useState({
     tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'Induk', bulan_spj: '', proses_gu: 'GU-01',
     kode_subkegiatan: '', kode_rekening: '', tanggal_nota: '', keterangan_nota: '', nik_vendor: '', nama_vendor: '', punya_npwp: false,
-    tipe_vendor: '', golongan_vendor: '', kategori_pajak: '', nominal_nota: '', ppn: 0, pph21: 0, pph22: 0, pph23: 0
+    tipe_vendor: '', golongan_vendor: '', kategori_pajak: '', kop_pajak: '', nominal_nota: '', ppn: 0, pph21: 0, pph22: 0, pph23: 0
   });
+
+  // Helper: parse Kode Objek Pajak menjadi KOP, KAP, KJS, NOP
+  const parseKOP = (kategori, kopVal) => {
+    if (kategori === 'PPh22 + PPN') {
+      return { kop_pajak: 'PPN-920-01 | 22-910-01', kap_pajak: '411211 | 411122', kjs_pajak: '920 | 910', nop_pajak: '01 | 01' };
+    }
+    if (!kopVal) return { kop_pajak: '', kap_pajak: '', kjs_pajak: '', nop_pajak: '' };
+    const parts = kopVal.split('-');
+    const prefix = parts[0] || '';
+    const kjs = parts[1] || '';
+    const nop = parts[2] || '';
+    let kap = '';
+    if (prefix === '21') kap = '411121';
+    else if (prefix === '24') kap = '411124';
+    return { kop_pajak: kopVal, kap_pajak: kap, kjs_pajak: kjs, nop_pajak: nop };
+  };
 
   const [showVendorSuggestions, setShowVendorSuggestions] = useState(false);
   const [searchVendor, setSearchVendor] = useState('');
@@ -102,7 +118,7 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
   }, [availableRekenings, formData.kode_rekening, formData.tahun_anggaran, formData.tahap_anggaran, realisasiGU]);
 
   const handleKategoriChange = (newKategori) => {
-    const newData = calculateTaxes(formData.nominal_nota, newKategori, formData);
+    const newData = calculateTaxes(formData.nominal_nota, newKategori, { ...formData, kop_pajak: '' });
     setFormData(newData);
     if (newKategori !== 'PPh21') setInputMode('satuan');
     setMasalChecked(new Set()); setMasalNominal(''); setMasalNominals({}); setMasalSearch('');
@@ -113,9 +129,11 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
     if (!formData.kode_subkegiatan || !formData.kode_rekening || !formData.nik_vendor) return showToast('Pastikan Sub Kegiatan, Rekening, dan Vendor sudah dipilih!', 'error');
     if (!formData.keterangan_nota) return showToast('Harap isi Keterangan/Aktivitas Nota!', 'error');
     if (!formData.kategori_pajak) return showToast('Harap pilih Kategori Pajak!', 'error');
+    if ((formData.kategori_pajak === 'PPh21' || formData.kategori_pajak === 'PPh23') && !formData.kop_pajak) return showToast('Harap pilih Referensi Kode Objek Pajak (KOP)!', 'error');
     if (Number(formData.nominal_nota) > paguTersedia) return showToast(`Nominal melebihi sisa pagu (${formatRupiah(paguTersedia)})!`, 'error');
 
-    const success = await onSave('RealisasiGU', formData);
+    const kopData = parseKOP(formData.kategori_pajak, formData.kop_pajak);
+    const success = await onSave('RealisasiGU', { ...formData, ...kopData });
     if (success) {
       setFormData(prev => ({
         ...prev, nik_vendor: '', nama_vendor: '', nominal_nota: '',
@@ -187,6 +205,7 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
     if (isMasalSubmitting) return;
     if (!formData.tanggal_nota) return showToast('Tanggal Nota wajib diisi!', 'error');
     if (!formData.keterangan_nota) return showToast('Keterangan/Aktivitas wajib diisi!', 'error');
+    if (!formData.kop_pajak) return showToast('Harap pilih Referensi Kode Objek Pajak (KOP)!', 'error');
     if (masalChecked.size === 0) return showToast('Pilih minimal 1 orang!', 'error');
     
     const checkedList = masalPersons.filter(p => masalChecked.has(p.id));
@@ -196,6 +215,7 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
     }
     if (masalSummary.totalNominal > paguTersedia) return showToast(`Total (${formatRupiah(masalSummary.totalNominal)}) melebihi sisa pagu (${formatRupiah(paguTersedia)})!`, 'error');
 
+    const kopData = parseKOP('PPh21', formData.kop_pajak);
     setIsMasalSubmitting(true);
     const items = checkedList.map(p => {
       const nom = masalTab === 'transport' ? Number(masalNominal) : Number(masalNominals[p.id]) || 0;
@@ -205,7 +225,8 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
         kode_subkegiatan: formData.kode_subkegiatan, kode_rekening: formData.kode_rekening,
         tanggal_nota: formData.tanggal_nota, nik_vendor: p.nik, nama_vendor: p.nama,
         nominal_nota: nom, ppn: 0, pph21: calcMasalPph21(p, nom), pph22: 0, pph23: 0,
-        keterangan_nota: formData.keterangan_nota
+        keterangan_nota: formData.keterangan_nota,
+        ...kopData
       };
     });
 
@@ -265,6 +286,29 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
             <option value="">-- Pilih Jenis Pajak --</option><option value="Tanpa Pajak">Tanpa Pajak</option><option value="PPh21">PPh 21</option><option value="PPh23">PPh 23</option><option value="PPh22 + PPN">PPh 22 + PPN</option>
           </SelectField>
 
+          {/* Referensi KOP dinamis berdasarkan kategori pajak */}
+          {formData.kategori_pajak === 'PPh22 + PPN' && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+              <span className="font-bold">ℹ️ KOP & KAP Otomatis:</span> PPN → 411211-920-01 &nbsp;|&nbsp; PPh 22 → 411122-910-01
+            </div>
+          )}
+          {formData.kategori_pajak === 'PPh21' && (
+            <div className="mt-3">
+              <SelectField label="Referensi KOP 21" value={formData.kop_pajak} onChange={e => setFormData({ ...formData, kop_pajak: e.target.value })} required>
+                <option value="">-- Pilih Kode Objek Pajak --</option>
+                {(kop21 || []).map((k, i) => <option key={i} value={k.kode_objek_pajak}>{k.kode_objek_pajak} — {k.nama_objek_pajak}</option>)}
+              </SelectField>
+            </div>
+          )}
+          {formData.kategori_pajak === 'PPh23' && (
+            <div className="mt-3">
+              <SelectField label="Referensi KOP UNI" value={formData.kop_pajak} onChange={e => setFormData({ ...formData, kop_pajak: e.target.value })} required>
+                <option value="">-- Pilih Kode Objek Pajak --</option>
+                {(kopUNI || []).map((k, i) => <option key={i} value={k.kode_objek_pajak}>{k.kode_objek_pajak} — {k.nama_objek_pajak} ({k.tarif})</option>)}
+              </SelectField>
+            </div>
+          )}
+
           {/* Toggle masal untuk PPh21 */}
           {isPph21 && (
             <div className="mt-4 flex items-center gap-3">
@@ -278,35 +322,36 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
         </div>
       )}
 
-      {/* === SECTION 4A: FORM SATUAN (default / non-PPh21 / PPh21 satuan) === */}
       {formData.kategori_pajak && !showMasalPanel && (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-            <div className="space-y-4">
-              <InputField label="Tanggal Nota / Tanda Terima" type="date" value={formData.tanggal_nota} onChange={e => setFormData({ ...formData, tanggal_nota: e.target.value })} required />
-              <InputField label="Keterangan / Aktivitas Nota" value={formData.keterangan_nota} onChange={e => setFormData({ ...formData, keterangan_nota: e.target.value })} placeholder="Contoh: Makan Minum Rapat Evaluasi..." required />
-              <div className="relative">
-                <InputField label="Pencarian Vendor / WP" value={searchVendor} onChange={e => { setSearchVendor(e.target.value); setShowVendorSuggestions(true); }} onFocus={() => setShowVendorSuggestions(true)} onBlur={() => setTimeout(() => setShowVendorSuggestions(false), 200)} placeholder="Ketik NIK atau Nama..." required autoComplete="off" />
-                {showVendorSuggestions && filteredVendors.length > 0 && (
-                  <ul className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-auto">{filteredVendors.map((v, idx) => (<li key={idx} onClick={() => handleSelectVendor(v)} className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b text-sm"><span className="font-bold">{v.nama} ({v.tipe})</span><br /><span className="text-xs text-gray-500">NIK: {v.nik}</span></li>))}</ul>
-                )}
+          <fieldset disabled={isLoading}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+              <div className="space-y-4">
+                <InputField label="Tanggal Nota / Tanda Terima" type="date" value={formData.tanggal_nota} onChange={e => setFormData({ ...formData, tanggal_nota: e.target.value })} required />
+                <InputField label="Keterangan / Aktivitas Nota" value={formData.keterangan_nota} onChange={e => setFormData({ ...formData, keterangan_nota: e.target.value })} placeholder="Contoh: Makan Minum Rapat Evaluasi..." required />
+                <div className="relative">
+                  <InputField label="Pencarian Vendor / WP" value={searchVendor} onChange={e => { setSearchVendor(e.target.value); setShowVendorSuggestions(true); }} onFocus={() => setShowVendorSuggestions(true)} onBlur={() => setTimeout(() => setShowVendorSuggestions(false), 200)} placeholder="Ketik NIK atau Nama..." required autoComplete="off" />
+                  {showVendorSuggestions && filteredVendors.length > 0 && (
+                    <ul className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-auto">{filteredVendors.map((v, idx) => (<li key={idx} onClick={() => handleSelectVendor(v)} className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b text-sm"><span className="font-bold">{v.nama} ({v.tipe})</span><br /><span className="text-xs text-gray-500">NIK: {v.nik}</span></li>))}</ul>
+                  )}
+                </div>
+                <InputField label="Nominal Bruto (Rp)" type="number" value={formData.nominal_nota || ''} onChange={e => setFormData(calculateTaxes(e.target.value, formData.kategori_pajak, formData))} required />
               </div>
-              <InputField label="Nominal Bruto (Rp)" type="number" value={formData.nominal_nota || ''} onChange={e => setFormData(calculateTaxes(e.target.value, formData.kategori_pajak, formData))} required />
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg border">
-              <h3 className="font-bold text-gray-700 mb-2">Potongan Pajak</h3>
-              <div className="space-y-2 mt-2">
-                {(formData.kategori_pajak === 'PPh22 + PPN' || formData.ppn > 0) && (<div className="flex gap-2"><label className="w-20 text-sm">PPN</label><input type="number" value={formData.ppn} onChange={e => setFormData({ ...formData, ppn: Number(e.target.value) })} className="flex-1 border px-2 py-1 rounded" /></div>)}
-                {(formData.kategori_pajak === 'PPh21' || formData.pph21 > 0) && (<div className="flex gap-2"><label className="w-20 text-sm">PPh 21</label><input type="number" value={formData.pph21} onChange={e => setFormData({ ...formData, pph21: Number(e.target.value) })} className="flex-1 border px-2 py-1 rounded" /></div>)}
-                {(formData.kategori_pajak === 'PPh22 + PPN' || formData.pph22 > 0) && (<div className="flex gap-2"><label className="w-20 text-sm">PPh 22</label><input type="number" value={formData.pph22} onChange={e => setFormData({ ...formData, pph22: Number(e.target.value) })} className="flex-1 border px-2 py-1 rounded" /></div>)}
-                {(formData.kategori_pajak === 'PPh23' || formData.pph23 > 0) && (<div className="flex gap-2"><label className="w-20 text-sm">PPh 23</label><input type="number" value={formData.pph23} onChange={e => setFormData({ ...formData, pph23: Number(e.target.value) })} className="flex-1 border px-2 py-1 rounded" /></div>)}
-                {formData.kategori_pajak === 'Tanpa Pajak' && <p className="text-sm text-gray-400 italic">Tidak ada potongan pajak.</p>}
+              <div className="bg-gray-50 p-4 rounded-lg border">
+                <h3 className="font-bold text-gray-700 mb-2">Potongan Pajak</h3>
+                <div className="space-y-2 mt-2">
+                  {(formData.kategori_pajak === 'PPh22 + PPN' || formData.ppn > 0) && (<div className="flex gap-2"><label className="w-20 text-sm">PPN</label><input type="number" value={formData.ppn} onChange={e => setFormData({ ...formData, ppn: Number(e.target.value) })} className="flex-1 border px-2 py-1 rounded" /></div>)}
+                  {(formData.kategori_pajak === 'PPh21' || formData.pph21 > 0) && (<div className="flex gap-2"><label className="w-20 text-sm">PPh 21</label><input type="number" value={formData.pph21} onChange={e => setFormData({ ...formData, pph21: Number(e.target.value) })} className="flex-1 border px-2 py-1 rounded" /></div>)}
+                  {(formData.kategori_pajak === 'PPh22 + PPN' || formData.pph22 > 0) && (<div className="flex gap-2"><label className="w-20 text-sm">PPh 22</label><input type="number" value={formData.pph22} onChange={e => setFormData({ ...formData, pph22: Number(e.target.value) })} className="flex-1 border px-2 py-1 rounded" /></div>)}
+                  {(formData.kategori_pajak === 'PPh23' || formData.pph23 > 0) && (<div className="flex gap-2"><label className="w-20 text-sm">PPh 23</label><input type="number" value={formData.pph23} onChange={e => setFormData({ ...formData, pph23: Number(e.target.value) })} className="flex-1 border px-2 py-1 rounded" /></div>)}
+                  {formData.kategori_pajak === 'Tanpa Pajak' && <p className="text-sm text-gray-400 italic">Tidak ada potongan pajak.</p>}
+                </div>
               </div>
             </div>
-          </div>
-          <button type="submit" disabled={isLoading} className="w-full py-3 bg-[#0A192F] text-white font-bold rounded-xl hover:bg-[#122442] shadow-lg transition-all disabled:opacity-50">
-            {isLoading ? 'Menyimpan...' : 'Simpan Data'}
-          </button>
+            <button type="submit" className="w-full mt-6 py-3 bg-[#0A192F] flex items-center justify-center text-white font-bold rounded-xl hover:bg-[#122442] shadow-lg transition-all disabled:opacity-50">
+              {isLoading ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div> Menyimpan...</> : 'Simpan Data'}
+            </button>
+          </fieldset>
         </form>
       )}
 
@@ -629,20 +674,22 @@ export const FormCetakSPJ = ({ rekenings, subKegiatans, kegiatans, realisasiGU, 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-xl p-6 shadow-xl max-w-md w-full">
             <h3 className="text-xl font-bold mb-4 border-b pb-2">Buat SPJ Baru</h3>
-            <div className="space-y-4 mb-6">
-              <SelectField label="Nama Bidang" value={inputBidang} onChange={e => setInputBidang(e.target.value)} required>
-                <option value="">-- Pilih Bidang --</option>
-                <option value="Sekretariat">Sekretariat</option>
-                <option value="Bidang PPTK">Bidang PPTK</option>
-                <option value="Bidang HI">Bidang HI</option>
-              </SelectField>
-            </div>
-            <div className="flex justify-end gap-3">
-              <button disabled={isSubmitting} onClick={() => setShowModalBidang(false)} className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50">Batal</button>
-              <button disabled={isSubmitting} onClick={proceedBuatSPJ} className={`px-6 py-2 bg-[#0A192F] text-white rounded hover:bg-[#122442] disabled:opacity-50 transition-all ${isSubmitting ? 'cursor-not-allowed' : ''}`}>
-                {isSubmitting ? 'Memproses...' : 'Ajukan SPJ'}
-              </button>
-            </div>
+            <fieldset disabled={isSubmitting}>
+              <div className="space-y-4 mb-6">
+                <SelectField label="Nama Bidang" value={inputBidang} onChange={e => setInputBidang(e.target.value)} required>
+                  <option value="">-- Pilih Bidang --</option>
+                  <option value="Sekretariat">Sekretariat</option>
+                  <option value="Bidang PPTK">Bidang PPTK</option>
+                  <option value="Bidang HI">Bidang HI</option>
+                </SelectField>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={() => setShowModalBidang(false)} className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50">Batal</button>
+                <button type="button" onClick={proceedBuatSPJ} className={`px-6 py-2 bg-[#0A192F] text-white rounded hover:bg-[#122442] transition-all flex items-center disabled:opacity-50 ${isSubmitting ? 'cursor-not-allowed' : ''}`}>
+                  {isSubmitting ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div> Memproses...</> : 'Ajukan SPJ'}
+                </button>
+              </div>
+            </fieldset>
           </div>
         </div>
       )}
@@ -665,6 +712,47 @@ export const PrintLayout = ({ data, onBack }) => {
   const tglCetakFormat = formatTanggal(data.pejabat.tanggal_cetak);
   const bulanFormat = data.filterContext.bulan_spj.toUpperCase();
   const cleanNIP = (nip) => nip ? nip.replace(/'/g, '') : '';
+
+  // Grouping: PPh21 notes dengan tanggal+keterangan sama digabung jadi 1 baris
+  const groupedNotes = useMemo(() => {
+    const isPph21 = (n) => Number(n.pph21) > 0 || String(n.kop_pajak || '').startsWith('21-');
+    const result = [];
+    const pph21Groups = {};
+
+    data.notes.forEach(n => {
+      if (isPph21(n)) {
+        const key = `${n.tanggal_nota}|||${n.keterangan_nota}`;
+        if (!pph21Groups[key]) {
+          pph21Groups[key] = {
+            ...n,
+            nominal_nota: 0,
+            ppn: 0, pph21: 0, pph22: 0, pph23: 0,
+            _count: 0
+          };
+        }
+        pph21Groups[key].nominal_nota = Number(pph21Groups[key].nominal_nota) + Number(n.nominal_nota);
+        pph21Groups[key].ppn = Number(pph21Groups[key].ppn) + Number(n.ppn);
+        pph21Groups[key].pph21 = Number(pph21Groups[key].pph21) + Number(n.pph21);
+        pph21Groups[key].pph22 = Number(pph21Groups[key].pph22) + Number(n.pph22);
+        pph21Groups[key].pph23 = Number(pph21Groups[key].pph23) + Number(n.pph23);
+        pph21Groups[key]._count += 1;
+      } else {
+        result.push(n);
+      }
+    });
+
+    Object.values(pph21Groups).forEach(group => {
+      result.push({
+        ...group,
+        nama_vendor: 'Dinas Tenaga Kerja Kota Surakarta',
+        keterangan_nota: `${group.keterangan_nota} (Daftar Penerima Terlampir: ${group._count} Orang)`
+      });
+    });
+
+    // Urutkan berdasarkan tanggal_nota agar kronologis
+    result.sort((a, b) => String(a.tanggal_nota).localeCompare(String(b.tanggal_nota)));
+    return result;
+  }, [data.notes]);
 
   return (
     <div className="bg-gray-200 print:bg-white min-h-screen pb-12 font-sans">
@@ -972,7 +1060,7 @@ export const PrintLayout = ({ data, onBack }) => {
               </tr>
             </thead>
             <tbody>
-              {data.notes.map((n, idx) => (
+              {groupedNotes.map((n, idx) => (
                 <tr key={idx}>
                   <td className="border border-black p-2 align-top">{idx + 1}</td>
                   <td className="border border-black p-2 align-top whitespace-nowrap">{formatTanggal(n.tanggal_nota)}</td>
@@ -986,7 +1074,7 @@ export const PrintLayout = ({ data, onBack }) => {
                   <td className="border border-black p-2 align-top text-left">{n.nama_vendor}</td>
                   <td className="border border-black p-2 align-top text-right whitespace-nowrap">{formatRupiah(n.nominal_nota)}</td>
                   {idx === 0 && (
-                    <td className="border border-black p-2 align-top whitespace-nowrap text-xs font-semibold tracking-tight" rowSpan={data.notes.length}>
+                    <td className="border border-black p-2 align-top whitespace-nowrap text-xs font-semibold tracking-tight" rowSpan={groupedNotes.length}>
                       {data.filterContext.kode_subkegiatan}.<br />{data.filterContext.kode_rekening}
                     </td>
                   )}

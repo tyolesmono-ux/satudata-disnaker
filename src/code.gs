@@ -2,7 +2,7 @@
  * BACKEND SATUDATA - Dinas Tenaga Kerja
  */
 
-const SHEET_NAMES = ['Program', 'Kegiatan', 'SubKegiatan', 'Rekening', 'PegawaiASN', 'WPPribadi', 'WPPihakKetiga', 'RealisasiGU', 'DataSPJ'];
+const SHEET_NAMES = ['Program', 'Kegiatan', 'SubKegiatan', 'Rekening', 'PegawaiASN', 'WPPribadi', 'WPPihakKetiga', 'RealisasiGU', 'DataSPJ', 'KOP21', 'KOPUNI'];
 
 function doGet(e) {
   try {
@@ -54,19 +54,23 @@ function doPost(e) {
       
       let rowData = [];
       if (sheetName === 'Program') {
-        rowData = [payload.kode_program, payload.nama_program, new Date()];
+        rowData = ["'" + payload.kode_program, payload.nama_program, new Date()];
       } else if (sheetName === 'Kegiatan') {
-        rowData = [payload.kode_program, payload.kode_kegiatan, payload.nama_kegiatan, new Date()];
+        rowData = ["'" + payload.kode_program, "'" + payload.kode_kegiatan, payload.nama_kegiatan, new Date()];
       } else if (sheetName === 'SubKegiatan') {
-        rowData = [payload.kode_kegiatan, payload.kode_subkegiatan, payload.nama_subkegiatan, new Date()];
+        rowData = ["'" + payload.kode_kegiatan, "'" + payload.kode_subkegiatan, payload.nama_subkegiatan, new Date()];
       } else if (sheetName === 'Rekening') {
-        rowData = [payload.kode_subkegiatan, payload.kode_rekening, payload.nama_rekening, payload.pagu, payload.tahun_anggaran, payload.tahap_anggaran, new Date()];
+        rowData = ["'" + payload.kode_subkegiatan, "'" + payload.kode_rekening, payload.nama_rekening, payload.pagu, payload.tahun_anggaran, payload.tahap_anggaran, new Date()];
       } else if (sheetName === 'PegawaiASN') {
         rowData = ["'" + payload.nip, "'" + payload.nik, "'" + payload.nitku, "'" + payload.npwp, payload.nama, payload.golongan, new Date()];
       } else if (sheetName === 'WPPribadi') {
         rowData = ["'" + payload.nik, "'" + payload.nitku, "'" + payload.npwp, payload.nama, new Date()];
       } else if (sheetName === 'WPPihakKetiga') {
         rowData = ["'" + payload.nik, "'" + payload.nitku, "'" + payload.npwp, payload.nama_pemilik, payload.nama_usaha, new Date()];
+      } else if (sheetName === 'KOP21') {
+        rowData = ["'" + payload.kode_objek_pajak, payload.nama_objek_pajak, new Date()];
+      } else if (sheetName === 'KOPUNI') {
+        rowData = ["'" + payload.kode_objek_pajak, payload.nama_objek_pajak, payload.tarif, new Date()];
       } else if (sheetName === 'RealisasiGU') {
         var tsNow = new Date().getTime();
         var randSuffix = Math.random().toString().slice(2, 6);
@@ -74,10 +78,11 @@ function doPost(e) {
         var tsUnique = String(tsNow) + randSuffix; // String murni agar konsisten
         rowData = [
           payload.tahun_anggaran, payload.tahap_anggaran, payload.bulan_spj, payload.proses_gu,
-          payload.kode_subkegiatan, payload.kode_rekening,
+          "'" + payload.kode_subkegiatan, "'" + payload.kode_rekening,
           payload.tanggal_nota, "'" + payload.nik_vendor, payload.nama_vendor, payload.nominal_nota,
           payload.ppn, payload.pph21, payload.pph22, payload.pph23, 
           payload.keterangan_nota,
+          "'" + (payload.kop_pajak || ''), "'" + (payload.kap_pajak || ''), "'" + (payload.kjs_pajak || ''), "'" + (payload.nop_pajak || ''),
           idNota, 'Draft', '', '', '', 'Draft', '', // id_nota, status_spj, kode_billing, no_ntpn, no_ntb, status_nota, id_spj
           tsUnique // timestamp unik (string)
         ];
@@ -114,10 +119,11 @@ function doPost(e) {
         
         var batchRowData = [
           item.tahun_anggaran, item.tahap_anggaran, item.bulan_spj, item.proses_gu,
-          item.kode_subkegiatan, item.kode_rekening,
+          "'" + item.kode_subkegiatan, "'" + item.kode_rekening,
           item.tanggal_nota, "'" + item.nik_vendor, item.nama_vendor, item.nominal_nota,
           item.ppn || 0, item.pph21 || 0, item.pph22 || 0, item.pph23 || 0,
           item.keterangan_nota,
+          "'" + (item.kop_pajak || ''), "'" + (item.kap_pajak || ''), "'" + (item.kjs_pajak || ''), "'" + (item.nop_pajak || ''),
           batchIdNota, 'Draft', '', '', '', 'Draft', '',
           batchTsUnique
         ];
@@ -226,7 +232,12 @@ function doPost(e) {
           ];
           fieldsToUpdate.forEach(f => {
             if (payload[f] !== undefined) {
-               sheetDataSPJ.getRange(rowIndex + 1, headers.indexOf(f) + 1).setValue(payload[f]);
+               // Tambah kutipan tunggal jika field adalah billing, ntpn, atau ntb agar nol didepan tidak hilang
+               var val = payload[f];
+               if (f.startsWith('billing_') || f.startsWith('ntpn_') || f.startsWith('ntb_')) {
+                 val = "'" + val;
+               }
+               sheetDataSPJ.getRange(rowIndex + 1, headers.indexOf(f) + 1).setValue(val);
             }
           });
         }
@@ -255,9 +266,9 @@ function doPost(e) {
 
               if (sNotaCol !== -1) sheetRG.getRange(i + 1, sNotaCol + 1).setValue('Valid');
               if (sSpjCol !== -1) sheetRG.getRange(i + 1, sSpjCol + 1).setValue('Valid');
-              if (bCol !== -1) sheetRG.getRange(i + 1, bCol + 1).setValue(strBilling);
-              if (ntpnCol !== -1) sheetRG.getRange(i + 1, ntpnCol + 1).setValue(strNtpn);
-              if (ntbCol !== -1) sheetRG.getRange(i + 1, ntbCol + 1).setValue(strNtb);
+              if (bCol !== -1) sheetRG.getRange(i + 1, bCol + 1).setValue("'" + strBilling);
+              if (ntpnCol !== -1) sheetRG.getRange(i + 1, ntpnCol + 1).setValue("'" + strNtpn);
+              if (ntbCol !== -1) sheetRG.getRange(i + 1, ntbCol + 1).setValue("'" + strNtb);
             }
           }
         }
@@ -341,7 +352,17 @@ function doPost(e) {
           for (const key in updates) {
             const colIndex = headers.indexOf(key);
             if (colIndex !== -1) {
-              sheet.getRange(i + 1, colIndex + 1).setValue(updates[key]);
+              var val = updates[key];
+              // List field yang wajib disimpan sebagai teks agar nol didepan tidak hilang
+              const textFields = [
+                'nik_vendor', 'kode_billing', 'no_ntpn', 'no_ntb', 
+                'kode_subkegiatan', 'kode_rekening', 'nik', 'npwp', 'nip', 'nitku',
+                'kode_program', 'kode_kegiatan', 'kode_objek_pajak', 'id_spj'
+              ];
+              if (textFields.includes(key)) {
+                val = "'" + val;
+              }
+              sheet.getRange(i + 1, colIndex + 1).setValue(val);
             }
           }
           count++;
@@ -390,10 +411,13 @@ function setHeaders(sheet, sheetName) {
   else if (sheetName === 'PegawaiASN') headers = ['nip', 'nik', 'nitku', 'npwp', 'nama', 'golongan', 'timestamp'];
   else if (sheetName === 'WPPribadi') headers = ['nik', 'nitku', 'npwp', 'nama', 'timestamp'];
   else if (sheetName === 'WPPihakKetiga') headers = ['nik', 'nitku', 'npwp', 'nama_pemilik', 'nama_usaha', 'timestamp'];
+  else if (sheetName === 'KOP21') headers = ['kode_objek_pajak', 'nama_objek_pajak', 'timestamp'];
+  else if (sheetName === 'KOPUNI') headers = ['kode_objek_pajak', 'nama_objek_pajak', 'tarif', 'timestamp'];
   else if (sheetName === 'RealisasiGU') headers = [
     'tahun_anggaran', 'tahap_anggaran', 'bulan_spj', 'proses_gu', 
     'kode_subkegiatan', 'kode_rekening', 'tanggal_nota', 'nik_vendor', 'nama_vendor', 'nominal_nota', 
     'ppn', 'pph21', 'pph22', 'pph23', 'keterangan_nota',
+    'kop_pajak', 'kap_pajak', 'kjs_pajak', 'nop_pajak',
     'id_nota', 'status_spj', 'kode_billing', 'no_ntpn', 'no_ntb', 'status_nota', 'id_spj',
     'timestamp'
   ];
