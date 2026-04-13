@@ -17,10 +17,7 @@ export default function App() {
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
-  const [anggaranMenuOpen, setAnggaranMenuOpen] = useState(false);
-  const [wpMenuOpen, setWpMenuOpen] = useState(false); 
-  const [realisasiMenuOpen, setRealisasiMenuOpen] = useState(true); 
-  const [laporanMenuOpen, setLaporanMenuOpen] = useState(false); 
+  const [expandedMenu, setExpandedMenu] = useState('realisasi'); 
   
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [modal, setModal] = useState({ show: false, status: 'loading', message: '' });
@@ -170,11 +167,11 @@ export default function App() {
             {sidebarOpen && <span className="ml-3 font-medium text-white">Dashboard</span>}
           </button>
           <div className="pt-2">
-            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setAnggaranMenuOpen(!anggaranMenuOpen); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5">
-              <div className="flex items-center"><Wallet size={20} style={{ color: activeMenu.startsWith('input') ? theme.gold : '#9ca3af' }} className="shrink-0" />{sidebarOpen && <span className="ml-3 font-medium text-white">Anggaran</span>}</div>
-              {sidebarOpen && (anggaranMenuOpen ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
+            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'anggaran' ? null : 'anggaran'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5">
+              <div className="flex items-center"><Wallet size={20} style={{ color: activeMenu.startsWith('input') || activeMenu === 'komparasi_anggaran' ? theme.gold : '#9ca3af' }} className="shrink-0" />{sidebarOpen && <span className="ml-3 font-medium text-white">Anggaran</span>}</div>
+              {sidebarOpen && (expandedMenu === 'anggaran' ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
             </button>
-            {sidebarOpen && anggaranMenuOpen && (
+            {sidebarOpen && expandedMenu === 'anggaran' && (
               <div className="mt-1 ml-4 pl-4 border-l border-gray-700 space-y-1">
                 {[{ id: 'input_program', label: 'Input Program' }, { id: 'input_kegiatan', label: 'Input Kegiatan' }, { id: 'input_subkegiatan', label: 'Input Sub Kegiatan' }, { id: 'input_rekening', label: 'Input Rekening' }].map((item) => (
                   <button key={item.id} onClick={() => setActiveMenu(item.id)} className={`w-full text-left py-2 px-3 rounded-md text-sm ${activeMenu === item.id ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>{item.label}</button>
@@ -189,11 +186,11 @@ export default function App() {
             </button>
           </div>
           <div className="pt-2">
-            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setWpMenuOpen(!wpMenuOpen); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5">
+            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'wp' ? null : 'wp'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5">
               <div className="flex items-center"><Users size={20} style={{ color: activeMenu.startsWith('wp_') ? theme.gold : '#9ca3af' }} className="shrink-0" />{sidebarOpen && <span className="ml-3 font-medium text-white">Wajib Pajak</span>}</div>
-              {sidebarOpen && (wpMenuOpen ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
+              {sidebarOpen && (expandedMenu === 'wp' ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
             </button>
-            {sidebarOpen && wpMenuOpen && (
+            {sidebarOpen && expandedMenu === 'wp' && (
               <div className="mt-1 ml-4 pl-4 border-l border-gray-700 space-y-1">
                 {[{ id: 'wp_asn', label: 'Data Pegawai ASN' }, { id: 'wp_pribadi', label: 'Data WP Pribadi' }, { id: 'wp_pihakketiga', label: 'Data WP Pihak Ketiga' }].map((item) => (
                   <button key={item.id} onClick={() => setActiveMenu(item.id)} className={`w-full text-left py-2 px-3 rounded-md text-sm ${activeMenu === item.id ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>{item.label}</button>
@@ -202,14 +199,14 @@ export default function App() {
             )}
           </div>
           <div className="pt-2">
-            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setRealisasiMenuOpen(!realisasiMenuOpen); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5 group">
+            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'realisasi' ? null : 'realisasi'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5 group">
               <div className="flex items-center">
                 <ReceiptText size={20} style={{ color: activeMenu.startsWith('realisasi_') || activeMenu === 'cetak_spj' || activeMenu === 'verifikasi_spj' ? theme.gold : '#9ca3af' }} className="shrink-0" />
                 {sidebarOpen && <span className="ml-3 font-medium text-white">Realisasi / SPJ</span>}
               </div>
-              {sidebarOpen && (realisasiMenuOpen ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
+              {sidebarOpen && (expandedMenu === 'realisasi' ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
             </button>
-            {sidebarOpen && realisasiMenuOpen && (
+            {sidebarOpen && expandedMenu === 'realisasi' && (
               <div className="mt-1 ml-4 pl-4 border-l border-gray-700 space-y-1">
                 <button onClick={() => setActiveMenu('realisasi_gu')} className={`w-full text-left py-2 px-3 rounded-md text-sm transition-colors ${activeMenu === 'realisasi_gu' ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>Input SPJ (GU)</button>
                 <button onClick={() => setActiveMenu('cetak_spj')} className={`w-full text-left py-2 px-3 rounded-md text-sm transition-colors ${activeMenu === 'cetak_spj' ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>Pengajuan SPJ</button>
@@ -218,14 +215,14 @@ export default function App() {
             )}
           </div>
           <div className="pt-2">
-            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setLaporanMenuOpen(!laporanMenuOpen); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5 group">
+            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'laporan' ? null : 'laporan'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5 group">
               <div className="flex items-center">
                 <FileText size={20} style={{ color: activeMenu.startsWith('laporan_') ? theme.gold : '#9ca3af' }} className="shrink-0" />
                 {sidebarOpen && <span className="ml-3 font-medium text-white">Laporan</span>}
               </div>
-              {sidebarOpen && (laporanMenuOpen ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
+              {sidebarOpen && (expandedMenu === 'laporan' ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
             </button>
-            {sidebarOpen && laporanMenuOpen && (
+            {sidebarOpen && expandedMenu === 'laporan' && (
               <div className="mt-1 ml-4 pl-4 border-l border-gray-700 space-y-1">
                 <button onClick={() => setActiveMenu('laporan_rekap_gu')} className={`w-full text-left py-2 px-3 rounded-md text-sm transition-colors ${activeMenu === 'laporan_rekap_gu' ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>Rekapitulasi GU</button>
                 <button onClick={() => setActiveMenu('laporan_coretax')} className={`w-full text-left py-2 px-3 rounded-md text-sm transition-colors ${activeMenu === 'laporan_coretax' ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>Laporan CoreTax</button>
