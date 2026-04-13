@@ -62,7 +62,7 @@ function doPost(e) {
       } else if (sheetName === 'Rekening') {
         rowData = ["'" + payload.kode_subkegiatan, "'" + payload.kode_rekening, payload.nama_rekening, payload.pagu, payload.tahun_anggaran, payload.tahap_anggaran, new Date()];
       } else if (sheetName === 'PegawaiASN') {
-        rowData = ["'" + payload.nip, "'" + payload.nik, "'" + payload.nitku, "'" + payload.npwp, payload.nama, payload.golongan, new Date()];
+        rowData = ["'" + payload.nip, "'" + payload.nik, "'" + payload.nitku, "'" + payload.npwp, payload.nama, payload.golongan, payload.peran_jabatan, payload.kategori_pegawai, new Date()];
       } else if (sheetName === 'WPPribadi') {
         rowData = ["'" + payload.nik, "'" + payload.nitku, "'" + payload.npwp, payload.nama, new Date()];
       } else if (sheetName === 'WPPihakKetiga') {
@@ -133,6 +133,72 @@ function doPost(e) {
       }
       
       return createJsonResponse({ status: 'success', message: items.length + ' nota berhasil disimpan!', results: results });
+    }
+
+    // ===============================================
+    // IMPORT KERTAS KERJA ANGGARAN (Excel .xlsx)
+    // ===============================================
+    if (action === 'import_kertas_kerja') {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      let sheet = ss.getSheetByName('Rekening');
+      if (!sheet) {
+        sheet = ss.insertSheet('Rekening');
+        setHeaders(sheet, 'Rekening');
+      }
+      
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      const items = (payload && payload.items) ? payload.items : (requestData.items || []);
+      
+      const colIdx = {
+        sub: headers.indexOf('kode_subkegiatan'),
+        rek: headers.indexOf('kode_rekening'),
+        nama: headers.indexOf('nama_rekening'),
+        pagu: headers.indexOf('pagu'),
+        tahun: headers.indexOf('tahun_anggaran'),
+        tahap: headers.indexOf('tahap_anggaran'),
+        ts: headers.indexOf('timestamp')
+      };
+      
+      let processed = 0;
+      items.forEach(item => {
+        let foundRow = -1;
+        // Cari baris yang cocok (SubKegiatan, Rekening, Tahun, Tahap)
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][colIdx.sub]) === String(item.kode_subkegiatan) &&
+              String(data[i][colIdx.rek]) === String(item.kode_rekening) &&
+              String(data[i][colIdx.tahun]) === String(item.tahun_anggaran) &&
+              String(data[i][colIdx.tahap]) === String(item.tahap_anggaran)) {
+            foundRow = i + 1;
+            break;
+          }
+        }
+        
+        const tsValue = new Date();
+        if (foundRow !== -1) {
+          // UPDATE
+          if (colIdx.nama !== -1 && item.nama_rekening !== undefined) sheet.getRange(foundRow, colIdx.nama + 1).setValue(item.nama_rekening);
+          if (colIdx.pagu !== -1 && item.pagu !== undefined) sheet.getRange(foundRow, colIdx.pagu + 1).setValue(item.pagu);
+          if (colIdx.ts !== -1) sheet.getRange(foundRow, colIdx.ts + 1).setValue(tsValue);
+        } else {
+          // INSERT
+          const rowData = [];
+          headers.forEach(h => {
+            if (h === 'kode_subkegiatan') rowData.push("'" + (item.kode_subkegiatan || ''));
+            else if (h === 'kode_rekening') rowData.push("'" + (item.kode_rekening || ''));
+            else if (h === 'nama_rekening') rowData.push(item.nama_rekening || '');
+            else if (h === 'pagu') rowData.push(Number(item.pagu || 0));
+            else if (h === 'tahun_anggaran') rowData.push(String(item.tahun_anggaran || ''));
+            else if (h === 'tahap_anggaran') rowData.push(item.tahap_anggaran || '');
+            else if (h === 'timestamp') rowData.push(tsValue);
+            else rowData.push('');
+          });
+          sheet.appendRow(rowData);
+        }
+        processed++;
+      });
+      
+      return createJsonResponse({ status: 'success', message: `${processed} data anggaran berhasil diproses!`, count: processed });
     }
 
     // ===============================================
@@ -408,7 +474,7 @@ function setHeaders(sheet, sheetName) {
   else if (sheetName === 'Kegiatan') headers = ['kode_program', 'kode_kegiatan', 'nama_kegiatan', 'timestamp'];
   else if (sheetName === 'SubKegiatan') headers = ['kode_kegiatan', 'kode_subkegiatan', 'nama_subkegiatan', 'timestamp'];
   else if (sheetName === 'Rekening') headers = ['kode_subkegiatan', 'kode_rekening', 'nama_rekening', 'pagu', 'tahun_anggaran', 'tahap_anggaran', 'timestamp'];
-  else if (sheetName === 'PegawaiASN') headers = ['nip', 'nik', 'nitku', 'npwp', 'nama', 'golongan', 'timestamp'];
+  else if (sheetName === 'PegawaiASN') headers = ['nip', 'nik', 'nitku', 'npwp', 'nama', 'golongan', 'peran_jabatan', 'kategori_pegawai', 'timestamp'];
   else if (sheetName === 'WPPribadi') headers = ['nik', 'nitku', 'npwp', 'nama', 'timestamp'];
   else if (sheetName === 'WPPihakKetiga') headers = ['nik', 'nitku', 'npwp', 'nama_pemilik', 'nama_usaha', 'timestamp'];
   else if (sheetName === 'KOP21') headers = ['kode_objek_pajak', 'nama_objek_pajak', 'timestamp'];

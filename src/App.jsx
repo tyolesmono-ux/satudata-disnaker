@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Wallet, ChevronDown, ChevronRight, Menu, CheckCircle2, AlertCircle, Users, ReceiptText, ShieldCheck, FileText } from 'lucide-react';
+import { LayoutDashboard, Wallet, ChevronDown, ChevronRight, Menu, CheckCircle2, AlertCircle, Users, ReceiptText, ShieldCheck, FileText, BarChart } from 'lucide-react';
 
 // Import Komfigurasi & Helper
 import { GAS_URL, theme } from './config/constants';
@@ -11,6 +11,7 @@ import { FormPegawaiASN, FormWPPribadi, FormWPPihakKetiga } from './components/W
 import { FormRealisasiGU, FormCetakSPJ, PrintLayout } from './components/Realisasi';
 import VerifikasiSPJ from './components/VerifikasiSPJ';
 import { LaporanRekapGU, LaporanCoreTax, LaporanSIMDTH } from './components/Laporan';
+import { KomparasiAnggaran } from './components/KomparasiAnggaran';
 
 export default function App() {
   const [activeMenu, setActiveMenu] = useState('dashboard');
@@ -41,44 +42,44 @@ export default function App() {
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [printedNotes, setPrintedNotes] = useState([]);
 
+  const fetchAllData = async () => {
+    if (!GAS_URL) return;
+    setIsFetchingData(true);
+    try {
+      const response = await fetch(`${GAS_URL}?action=getAllData`);
+      const result = await response.json();
+      if (result.status === 'success') {
+        setPrograms(result.data.program || []);
+        setKegiatans(result.data.kegiatan || []);
+        setSubKegiatans(result.data.subkegiatan || []);
+        setRekenings(result.data.rekening || []);
+        setPegawaiASN(result.data.pegawaiasn || []);
+        setWPPribadi(result.data.wppribadi || []);
+        setWPPihakKetiga(result.data.wppihakketiga || []);
+        setDataSPJ(result.data.dataspj || []);
+        setKop21(result.data.kop21 || []);
+        setKopUNI(result.data.kopuni || []);
+        
+        const formattedRealisasi = (result.data.realisasigu || []).map((r, idx) => {
+          const uniqueId = r.timestamp ? String(r.timestamp) : `temp_${idx}_${Date.now()}`;
+          return { 
+            ...r, 
+            id_nota: r.id_nota || uniqueId,
+            timestamp: uniqueId
+          };
+        });
+        setRealisasiGU(formattedRealisasi);
+      }
+    } catch (error) {
+      showToast('Gagal menarik data dari database.', 'error');
+    } finally {
+      setIsFetchingData(false);
+    }
+  };
+
   useEffect(() => {
     const savedPrinted = localStorage.getItem('satuData_printedNotes');
     if (savedPrinted) setPrintedNotes(JSON.parse(savedPrinted));
-
-    const fetchAllData = async () => {
-      if (!GAS_URL) return;
-      setIsFetchingData(true);
-      try {
-        const response = await fetch(`${GAS_URL}?action=getAllData`);
-        const result = await response.json();
-        if (result.status === 'success') {
-          setPrograms(result.data.program || []);
-          setKegiatans(result.data.kegiatan || []);
-          setSubKegiatans(result.data.subkegiatan || []);
-          setRekenings(result.data.rekening || []);
-          setPegawaiASN(result.data.pegawaiasn || []);
-          setWPPribadi(result.data.wppribadi || []);
-          setWPPihakKetiga(result.data.wppihakketiga || []);
-          setDataSPJ(result.data.dataspj || []);
-          setKop21(result.data.kop21 || []);
-          setKopUNI(result.data.kopuni || []);
-          
-          const formattedRealisasi = (result.data.realisasigu || []).map((r, idx) => {
-            const uniqueId = r.timestamp ? String(r.timestamp) : `temp_${idx}_${Date.now()}`;
-            return { 
-              ...r, 
-              id_nota: r.id_nota || uniqueId, // Pertahankan id_nota asli dari sheet ("NT-...")
-              timestamp: uniqueId
-            };
-          });
-          setRealisasiGU(formattedRealisasi);
-        }
-      } catch (error) {
-        showToast('Gagal menarik data dari database.', 'error');
-      } finally {
-        setIsFetchingData(false);
-      }
-    };
     fetchAllData();
   }, []);
 
@@ -182,6 +183,12 @@ export default function App() {
             )}
           </div>
           <div className="pt-2">
+            <button onClick={() => setActiveMenu('komparasi_anggaran')} className={`w-full flex items-center p-3 rounded-lg transition-colors ${activeMenu === 'komparasi_anggaran' ? 'bg-white/10' : 'hover:bg-white/5'}`}>
+              <BarChart size={20} style={{ color: activeMenu === 'komparasi_anggaran' ? theme.gold : '#9ca3af' }} className="shrink-0" />
+              {sidebarOpen && <span className="ml-3 font-medium text-white">Analisis Pergeseran</span>}
+            </button>
+          </div>
+          <div className="pt-2">
             <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setWpMenuOpen(!wpMenuOpen); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5">
               <div className="flex items-center"><Users size={20} style={{ color: activeMenu.startsWith('wp_') ? theme.gold : '#9ca3af' }} className="shrink-0" />{sidebarOpen && <span className="ml-3 font-medium text-white">Wajib Pajak</span>}</div>
               {sidebarOpen && (wpMenuOpen ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
@@ -243,8 +250,10 @@ export default function App() {
             {activeMenu === 'input_program' && <FormProgram onSave={handleSaveData} isLoading={isLoading} />}
             {activeMenu === 'input_kegiatan' && <FormKegiatan onSave={handleSaveData} isLoading={isLoading} programs={programs} />}
             {activeMenu === 'input_subkegiatan' && <FormSubKegiatan onSave={handleSaveData} isLoading={isLoading} kegiatans={kegiatans} />}
-            {activeMenu === 'input_rekening' && <FormRekening onSave={handleSaveData} isLoading={isLoading} subKegiatans={subKegiatans} rekenings={rekenings} />}
+            {activeMenu === 'input_rekening' && <FormRekening onSave={handleSaveData} isLoading={isLoading} subKegiatans={subKegiatans} rekenings={rekenings} refreshData={fetchAllData} gasUrl={GAS_URL} setModal={setModal} showToast={showToast} />}
             
+            {activeMenu === 'komparasi_anggaran' && <KomparasiAnggaran rekenings={rekenings} subKegiatans={subKegiatans} />}
+
             {activeMenu === 'wp_asn' && <FormPegawaiASN onSave={handleSaveData} isLoading={isLoading} />}
             {activeMenu === 'wp_pribadi' && <FormWPPribadi onSave={handleSaveData} isLoading={isLoading} />}
             {activeMenu === 'wp_pihakketiga' && <FormWPPihakKetiga onSave={handleSaveData} isLoading={isLoading} />}

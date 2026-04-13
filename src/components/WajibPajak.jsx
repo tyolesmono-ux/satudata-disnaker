@@ -4,12 +4,12 @@ import React, { useState } from 'react';
 import { FormContainer, InputField, SelectField } from './SharedUI';
 
 export const FormPegawaiASN = ({ onSave, isLoading }) => {
-  const [formData, setFormData] = useState({ nip: '', nik: '', nitku: '', npwp: '', nama: '', golongan: '' });
+  const [formData, setFormData] = useState({ nip: '', nik: '', nitku: '', npwp: '', nama: '', golongan: '', peran_jabatan: '', kategori_pegawai: 'Internal' });
   
   const handleSubmit = async (e) => { 
     e.preventDefault(); 
     const success = await onSave('PegawaiASN', formData); 
-    if(success) setFormData({ nip: '', nik: '', nitku: '', npwp: '', nama: '', golongan: '' }); 
+    if(success) setFormData({ nip: '', nik: '', nitku: '', npwp: '', nama: '', golongan: '', peran_jabatan: '', kategori_pegawai: 'Internal' }); 
   };
 
   return (
@@ -27,6 +27,16 @@ export const FormPegawaiASN = ({ onSave, isLoading }) => {
         <SelectField label="Golongan" value={formData.golongan} onChange={e => setFormData({...formData, golongan: e.target.value})} required>
           <option value="">-- Pilih Golongan --</option>
           <option value="I">Gol. I</option><option value="II">Gol. II</option><option value="III">Gol. III</option><option value="IV">Gol. IV</option>
+        </SelectField>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SelectField label="Peran Jabatan" value={formData.peran_jabatan} onChange={e => setFormData({...formData, peran_jabatan: e.target.value})} required>
+          <option value="">-- Pilih Peran --</option>
+          <option value="PA">PA</option><option value="PPK">PPK</option><option value="PPTK">PPTK</option><option value="Bendahara">Bendahara</option><option value="Staff">Staff</option>
+        </SelectField>
+        <SelectField label="Kategori Pegawai" value={formData.kategori_pegawai} onChange={e => setFormData({...formData, kategori_pegawai: e.target.value})} required>
+          <option value="Internal">Internal</option>
+          <option value="Eksternal">Eksternal</option>
         </SelectField>
       </div>
     </FormContainer>

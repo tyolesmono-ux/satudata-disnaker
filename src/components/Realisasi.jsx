@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Printer, FileText, ArrowLeft, CheckSquare } from 'lucide-react';
-import { FormContainer, InputField, SelectField } from './SharedUI';
+import { FormContainer, InputField, SelectField, SearchableSelect } from './SharedUI';
 import { theme, GAS_URL } from '../config/constants';
 import { formatRupiah, formatTanggal, terbilang } from '../utils/helpers';
 import logoSurakarta from '../assets/logo-surakarta.png';
@@ -28,13 +28,6 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
     return { kop_pajak: kopVal, kap_pajak: kap, kjs_pajak: kjs, nop_pajak: nop };
   };
 
-  const [showVendorSuggestions, setShowVendorSuggestions] = useState(false);
-  const [searchVendor, setSearchVendor] = useState('');
-  const [showSubSuggestions, setShowSubSuggestions] = useState(false);
-  const [searchSub, setSearchSub] = useState('');
-  const [showRekSuggestions, setShowRekSuggestions] = useState(false);
-  const [searchRek, setSearchRek] = useState('');
-
   // Mass input states
   const [inputMode, setInputMode] = useState('satuan');
   const [masalTab, setMasalTab] = useState('transport');
@@ -50,24 +43,17 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
   // Fix WP Pribadi: stringify semua value agar autocomplete dan filter konsisten
   const masterVendor = useMemo(() => {
     const all = [];
-    pegawaiASN.forEach(p => all.push({ nik: String(p.nik || '').replace(/^'/, ''), nip: String(p.nip || '').replace(/^'/, ''), nama: String(p.nama || ''), npwp: String(p.npwp || '').replace(/^'/, ''), tipe: 'ASN', golongan: String(p.golongan || '') }));
-    wpPribadi.forEach(p => all.push({ nik: String(p.nik || '').replace(/^'/, ''), nama: String(p.nama || ''), npwp: String(p.npwp || '').replace(/^'/, ''), tipe: 'Pribadi' }));
-    wpPihakKetiga.forEach(p => all.push({ nik: String(p.nik || '').replace(/^'/, ''), nama: String(p.nama_usaha || p.nama_pemilik || ''), npwp: String(p.npwp || '').replace(/^'/, ''), tipe: 'Badan' }));
+    (pegawaiASN || []).forEach(p => all.push({ nik: String(p.nik || '').replace(/^'/, ''), nip: String(p.nip || '').replace(/^'/, ''), nama: String(p.nama || ''), npwp: String(p.npwp || '').replace(/^'/, ''), tipe: 'ASN', golongan: String(p.golongan || ''), kategori_pegawai: String(p.kategori_pegawai || '') }));
+    (wpPribadi || []).forEach(p => all.push({ nik: String(p.nik || '').replace(/^'/, ''), nama: String(p.nama || ''), npwp: String(p.npwp || '').replace(/^'/, ''), tipe: 'Pribadi' }));
+    (wpPihakKetiga || []).forEach(p => all.push({ nik: String(p.nik || '').replace(/^'/, ''), nama: String(p.nama_usaha || p.nama_pemilik || ''), npwp: String(p.npwp || '').replace(/^'/, ''), tipe: 'Badan' }));
     return all;
   }, [pegawaiASN, wpPribadi, wpPihakKetiga]);
-
-  const filteredVendors = useMemo(() => {
-    if (!searchVendor) return []; const kw = searchVendor.toLowerCase();
-    return masterVendor.filter(v => v.nik.toLowerCase().includes(kw) || v.nama.toLowerCase().includes(kw));
-  }, [searchVendor, masterVendor]);
 
   const handleSelectVendor = (vendor) => {
     const npwpStr = String(vendor.npwp || '');
     const hasNpwp = npwpStr.length > 0 && npwpStr !== '-' && npwpStr !== '0' && npwpStr !== '';
-    setSearchVendor(`${vendor.nama} (${vendor.nik})`);
     let newFormData = { ...formData, nik_vendor: vendor.nik, nama_vendor: vendor.nama, punya_npwp: hasNpwp, tipe_vendor: vendor.tipe, golongan_vendor: vendor.golongan || '' };
     setFormData(calculateTaxes(newFormData.nominal_nota, newFormData.kategori_pajak, newFormData));
-    setShowVendorSuggestions(false);
   };
 
   const calculateTaxes = (nominal, kategori, dataState) => {
@@ -86,34 +72,22 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
     return { ...dataState, nominal_nota: nom, kategori_pajak: kategori, ppn: calcPpn, pph21: calcPph21, pph22: calcPph22, pph23: calcPph23 };
   };
 
-  const filteredSubkegiatans = useMemo(() => {
-    if (!searchSub) return subKegiatans; const kw = searchSub.toLowerCase();
-    return subKegiatans.filter(s => String(s.kode_subkegiatan).toLowerCase().includes(kw) || String(s.nama_subkegiatan).toLowerCase().includes(kw));
-  }, [searchSub, subKegiatans]);
-
   const handleSelectSub = (sub) => {
     setFormData({ ...formData, kode_subkegiatan: sub.kode_subkegiatan, kode_rekening: '' });
-    setSearchSub(`[${sub.kode_subkegiatan}] ${sub.nama_subkegiatan}`); setSearchRek(''); setShowSubSuggestions(false);
   };
 
   const availableRekenings = useMemo(() => {
-    return rekenings.filter(r => String(r.tahun_anggaran) === String(formData.tahun_anggaran) && String(r.tahap_anggaran) === String(formData.tahap_anggaran) && String(r.kode_subkegiatan) === String(formData.kode_subkegiatan));
+    return (rekenings || []).filter(r => String(r.tahun_anggaran) === String(formData.tahun_anggaran) && String(r.tahap_anggaran) === String(formData.tahap_anggaran) && String(r.kode_subkegiatan) === String(formData.kode_subkegiatan));
   }, [rekenings, formData.tahun_anggaran, formData.tahap_anggaran, formData.kode_subkegiatan]);
-
-  const filteredRekenings = useMemo(() => {
-    if (!searchRek) return availableRekenings; const kw = searchRek.toLowerCase();
-    return availableRekenings.filter(r => String(r.kode_rekening).toLowerCase().includes(kw) || String(r.nama_rekening).toLowerCase().includes(kw));
-  }, [searchRek, availableRekenings]);
 
   const handleSelectRek = (rek) => {
     setFormData({ ...formData, kode_rekening: rek.kode_rekening });
-    setSearchRek(`[${rek.kode_rekening}] ${rek.nama_rekening}`); setShowRekSuggestions(false);
   };
 
   const { paguTotal, paguTersedia } = useMemo(() => {
     const rek = availableRekenings.find(r => String(r.kode_rekening) === String(formData.kode_rekening));
     const total = rek ? Number(rek.pagu) : 0;
-    const terpakai = realisasiGU.filter(r => String(r.tahun_anggaran) === String(formData.tahun_anggaran) && String(r.tahap_anggaran) === String(formData.tahap_anggaran) && String(r.kode_rekening) === String(formData.kode_rekening)).reduce((sum, r) => sum + Number(r.nominal_nota || 0), 0);
+    const terpakai = (realisasiGU || []).filter(r => String(r.tahun_anggaran) === String(formData.tahun_anggaran) && String(r.tahap_anggaran) === String(formData.tahap_anggaran) && String(r.kode_rekening) === String(formData.kode_rekening)).reduce((sum, r) => sum + Number(r.nominal_nota || 0), 0);
     return { paguTotal: total, paguTersedia: total - terpakai };
   }, [availableRekenings, formData.kode_rekening, formData.tahun_anggaran, formData.tahap_anggaran, realisasiGU]);
 
@@ -139,7 +113,6 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
         ...prev, nik_vendor: '', nama_vendor: '', nominal_nota: '',
         keterangan_nota: '', ppn: 0, pph21: 0, pph22: 0, pph23: 0
       }));
-      setSearchVendor('');
     }
   };
 
@@ -147,19 +120,44 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
   // MASS INPUT PPh21 LOGIC
   // ============================================================
   const masalPersons = useMemo(() => {
-    const source = masalTab === 'transport' ? wpPribadi : pegawaiASN;
-    const list = source.map(p => ({
-      id: masalTab === 'transport' ? String(p.nik || '').replace(/^'/, '') : String(p.nip || '').replace(/^'/, ''),
-      nik: String(p.nik || '').replace(/^'/, ''),
-      nip: masalTab === 'honor' ? String(p.nip || '').replace(/^'/, '') : '',
-      nama: String(p.nama || ''),
-      npwp: String(p.npwp || '').replace(/^'/, ''),
-      golongan: String(p.golongan || ''),
-      tipe: masalTab === 'transport' ? 'Pribadi' : 'ASN'
-    }));
+    // Isolasi sumber data secara absolut berdasarkan tab
+    const source = masalTab === 'transport' ? (wpPribadi || []) : (pegawaiASN || []);
+    
+    const seen = new Set();
+    const list = [];
+    
+    (source || []).forEach((p, idx) => {
+      const rawNip = String(p.nip || p.NIP || p.Nip || '').replace(/^'/, '').trim();
+      const rawNik = String(p.nik || p.NIK || p.Nik || '').replace(/^'/, '').trim();
+      
+      const primaryId = masalTab === 'transport' ? rawNik : rawNip;
+      // Gunakan prefix tab + fallback index jika NIP/NIK benar-benar kosong di sheet 
+      // sehingga React akan unmount baris secara paksa setiap pindah tab dan mencegah bug layout "tertarik"
+      const uniqueId = primaryId ? `${masalTab}-${primaryId}` : `${masalTab}-kosong-${idx}`;
+      
+      if (!seen.has(uniqueId)) {
+        seen.add(uniqueId);
+        list.push({
+          id: uniqueId,
+          baseId: primaryId, // Id asli untuk logika penyimpanan
+          nik: rawNik,
+          nip: masalTab === 'honor' ? rawNip : '',
+          nama: String(p.nama || p.Nama || '').trim(),
+          npwp: String(p.npwp || p.NPWP || '').replace(/^'/, '').trim(),
+          golongan: masalTab === 'honor' ? String(p.golongan || p.Golongan || '').trim() : '',
+          tipe: masalTab === 'transport' ? 'Pribadi' : 'ASN',
+          kategori_pegawai: String(p.kategori_pegawai || p.Kategori_Pegawai || '').trim()
+        });
+      }
+    });
+
     if (!masalSearch) return list;
     const kw = masalSearch.toLowerCase();
-    return list.filter(p => p.nama.toLowerCase().includes(kw) || p.nik.toLowerCase().includes(kw) || (p.nip && p.nip.toLowerCase().includes(kw)));
+    return list.filter(p => 
+      p.nama.toLowerCase().includes(kw) || 
+      p.nik.toLowerCase().includes(kw) || 
+      (p.nip && p.nip.toLowerCase().includes(kw))
+    );
   }, [masalTab, masalSearch, wpPribadi, pegawaiASN]);
 
   const handleMasalToggle = (personId) => {
@@ -207,7 +205,7 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
     if (!formData.keterangan_nota) return showToast('Keterangan/Aktivitas wajib diisi!', 'error');
     if (!formData.kop_pajak) return showToast('Harap pilih Referensi Kode Objek Pajak (KOP)!', 'error');
     if (masalChecked.size === 0) return showToast('Pilih minimal 1 orang!', 'error');
-    
+
     const checkedList = masalPersons.filter(p => masalChecked.has(p.id));
     for (const p of checkedList) {
       const nom = masalTab === 'transport' ? Number(masalNominal) || 0 : Number(masalNominals[p.id]) || 0;
@@ -253,7 +251,7 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border p-6 animate-in fade-in">
       <h2 className="text-xl font-bold mb-6 pb-2 border-b flex items-center"><FileText size={20} className="mr-2" /> Input SPJ (Ganti Uang)</h2>
-      
+
       {/* === SECTION 1: FILTER HEADER === */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4 p-4 rounded-lg bg-blue-50 border border-blue-100">
         <SelectField label="Tahun" value={formData.tahun_anggaran} onChange={e => setFormData({ ...formData, tahun_anggaran: e.target.value })} required><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option></SelectField>
@@ -264,18 +262,28 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
 
       {/* === SECTION 2: SUB KEGIATAN & REKENING === */}
       <div className="space-y-4 mb-4">
-        <div className="relative">
-          <InputField label="Cari Sub Kegiatan" value={searchSub} onChange={e => { setSearchSub(e.target.value); setShowSubSuggestions(true); }} onFocus={() => setShowSubSuggestions(true)} onBlur={() => setTimeout(() => setShowSubSuggestions(false), 200)} placeholder="Ketik Kode/Nama Sub Kegiatan..." required autoComplete="off" />
-          {showSubSuggestions && filteredSubkegiatans.length > 0 && (
-            <ul className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-auto">{filteredSubkegiatans.map((s, idx) => (<li key={idx} onClick={() => handleSelectSub(s)} className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b text-sm font-bold">{s.kode_subkegiatan} <br /><span className="text-gray-500 font-normal">{s.nama_subkegiatan}</span></li>))}</ul>
-          )}
-        </div>
-        <div className="relative">
-          <InputField label="Cari Rekening Belanja" value={searchRek} onChange={e => { setSearchRek(e.target.value); setShowRekSuggestions(true); }} onFocus={() => setShowRekSuggestions(true)} onBlur={() => setTimeout(() => setShowRekSuggestions(false), 200)} placeholder="Ketik Kode/Nama Rekening..." required disabled={!formData.kode_subkegiatan} autoComplete="off" />
-          {showRekSuggestions && filteredRekenings.length > 0 && formData.kode_subkegiatan && (
-            <ul className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-auto">{filteredRekenings.map((r, idx) => (<li key={idx} onClick={() => handleSelectRek(r)} className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b text-sm font-bold">{r.kode_rekening} <br /><span className="text-gray-500 font-normal">{r.nama_rekening}</span></li>))}</ul>
-          )}
-        </div>
+        <SearchableSelect
+          label="Cari Sub Kegiatan"
+          placeholder="Ketik Kode/Nama Sub Kegiatan..."
+          value={formData.kode_subkegiatan}
+          onChange={(val) => {
+            const sub = (subKegiatans || []).find(s => s.kode_subkegiatan === val);
+            if (sub) handleSelectSub(sub);
+            else setFormData({ ...formData, kode_subkegiatan: '', kode_rekening: '' });
+          }}
+          options={(subKegiatans || []).map(s => ({ value: s.kode_subkegiatan, label: `[${s.kode_subkegiatan}] ${s.nama_subkegiatan}` }))}
+        />
+        <SearchableSelect
+          label="Cari Rekening Belanja"
+          placeholder="Ketik Kode/Nama Rekening..."
+          value={formData.kode_rekening}
+          onChange={(val) => {
+            const rek = (availableRekenings || []).find(r => r.kode_rekening === val);
+            if (rek) handleSelectRek(rek);
+            else setFormData({ ...formData, kode_rekening: '' });
+          }}
+          options={(availableRekenings || []).map(r => ({ value: r.kode_rekening, label: `[${r.kode_rekening}] ${r.nama_rekening}` }))}
+        />
         {formData.kode_rekening && (<div className="flex justify-between text-sm bg-gray-50 p-3 rounded border"><div className="text-gray-600">Pagu Total: {formatRupiah(paguTotal)}</div><div className="font-bold">Sisa Pagu: <span className={paguTersedia > 0 ? "text-green-700" : "text-red-600"}>{formatRupiah(paguTersedia)}</span></div></div>)}
       </div>
 
@@ -294,18 +302,24 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
           )}
           {formData.kategori_pajak === 'PPh21' && (
             <div className="mt-3">
-              <SelectField label="Referensi KOP 21" value={formData.kop_pajak} onChange={e => setFormData({ ...formData, kop_pajak: e.target.value })} required>
-                <option value="">-- Pilih Kode Objek Pajak --</option>
-                {(kop21 || []).map((k, i) => <option key={i} value={k.kode_objek_pajak}>{k.kode_objek_pajak} — {k.nama_objek_pajak}</option>)}
-              </SelectField>
+              <SearchableSelect
+                label="Referensi KOP 21"
+                placeholder="Pilih Kode Objek Pajak..."
+                value={formData.kop_pajak}
+                onChange={val => setFormData({ ...formData, kop_pajak: val })}
+                options={(kop21 || []).map(k => ({ value: k.kode_objek_pajak, label: `${k.kode_objek_pajak} — ${k.nama_objek_pajak}` }))}
+              />
             </div>
           )}
           {formData.kategori_pajak === 'PPh23' && (
             <div className="mt-3">
-              <SelectField label="Referensi KOP UNI" value={formData.kop_pajak} onChange={e => setFormData({ ...formData, kop_pajak: e.target.value })} required>
-                <option value="">-- Pilih Kode Objek Pajak --</option>
-                {(kopUNI || []).map((k, i) => <option key={i} value={k.kode_objek_pajak}>{k.kode_objek_pajak} — {k.nama_objek_pajak} ({k.tarif})</option>)}
-              </SelectField>
+              <SearchableSelect
+                label="Referensi KOP UNI"
+                placeholder="Pilih Kode Objek Pajak..."
+                value={formData.kop_pajak}
+                onChange={val => setFormData({ ...formData, kop_pajak: val })}
+                options={(kopUNI || []).map(k => ({ value: k.kode_objek_pajak, label: `${k.kode_objek_pajak} — ${k.nama_objek_pajak} (${k.tarif})` }))}
+              />
             </div>
           )}
 
@@ -329,12 +343,17 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
               <div className="space-y-4">
                 <InputField label="Tanggal Nota / Tanda Terima" type="date" value={formData.tanggal_nota} onChange={e => setFormData({ ...formData, tanggal_nota: e.target.value })} required />
                 <InputField label="Keterangan / Aktivitas Nota" value={formData.keterangan_nota} onChange={e => setFormData({ ...formData, keterangan_nota: e.target.value })} placeholder="Contoh: Makan Minum Rapat Evaluasi..." required />
-                <div className="relative">
-                  <InputField label="Pencarian Vendor / WP" value={searchVendor} onChange={e => { setSearchVendor(e.target.value); setShowVendorSuggestions(true); }} onFocus={() => setShowVendorSuggestions(true)} onBlur={() => setTimeout(() => setShowVendorSuggestions(false), 200)} placeholder="Ketik NIK atau Nama..." required autoComplete="off" />
-                  {showVendorSuggestions && filteredVendors.length > 0 && (
-                    <ul className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-auto">{filteredVendors.map((v, idx) => (<li key={idx} onClick={() => handleSelectVendor(v)} className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b text-sm"><span className="font-bold">{v.nama} ({v.tipe})</span><br /><span className="text-xs text-gray-500">NIK: {v.nik}</span></li>))}</ul>
-                  )}
-                </div>
+                <SearchableSelect
+                  label="Pencarian Vendor / WP / Penerima"
+                  placeholder="Ketik NIK atau Nama..."
+                  value={formData.nik_vendor}
+                  onChange={(val) => {
+                    const vendor = (masterVendor || []).find(v => v.nik === val);
+                    if (vendor) handleSelectVendor(vendor);
+                    else setFormData({ ...formData, nik_vendor: '', nama_vendor: '', tipe_vendor: '' });
+                  }}
+                  options={(masterVendor || []).map(v => ({ value: v.nik, label: `${v.nama} (${v.tipe}) - ${v.nik}` }))}
+                />
                 <InputField label="Nominal Bruto (Rp)" type="number" value={formData.nominal_nota || ''} onChange={e => setFormData(calculateTaxes(e.target.value, formData.kategori_pajak, formData))} required />
               </div>
               <div className="bg-gray-50 p-4 rounded-lg border">
@@ -375,17 +394,49 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
 
           {/* Nominal seragam (hanya untuk Transport) */}
           {masalTab === 'transport' && (
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-              <InputField label="Nominal Per Orang (sama untuk semua)" type="number" value={masalNominal} onChange={e => setMasalNominal(e.target.value)} placeholder="Contoh: 150000" required />
+            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex-1">
+                <InputField label="Nominal Per Orang (sama untuk semua)" type="number" value={masalNominal} onChange={e => setMasalNominal(e.target.value)} placeholder="Contoh: 150000" required />
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => {
+                  const internal = masalPersons.filter(p => p.kategori_pegawai === 'Internal');
+                  setMasalChecked(prev => new Set([...prev, ...internal.map(i => i.id)]));
+                }} className="px-4 py-2 text-[10px] font-black bg-white border border-gray-200 hover:bg-blue-50 rounded-lg transition-all uppercase tracking-tighter">Pilih Semua Internal</button>
+                <button type="button" onClick={() => {
+                  const eksternal = masalPersons.filter(p => p.kategori_pegawai === 'Eksternal');
+                  setMasalChecked(prev => new Set([...prev, ...eksternal.map(i => i.id)]));
+                }} className="px-4 py-2 text-[10px] font-black bg-white border border-gray-200 hover:bg-red-50 rounded-lg transition-all uppercase tracking-tighter">Pilih Semua Eksternal</button>
+              </div>
+            </div>
+          )}
+
+          {masalTab === 'honor' && (
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={() => {
+                const internal = masalPersons.filter(p => p.kategori_pegawai === 'Internal');
+                setMasalChecked(prev => new Set([...prev, ...internal.map(i => i.id)]));
+              }} className="px-4 py-2 text-[10px] font-black border border-gray-200 hover:bg-blue-50 rounded-lg transition-all uppercase tracking-tighter">Pilih Semua Internal</button>
+              <button type="button" onClick={() => {
+                const eksternal = masalPersons.filter(p => p.kategori_pegawai === 'Eksternal');
+                setMasalChecked(prev => new Set([...prev, ...eksternal.map(i => i.id)]));
+              }} className="px-4 py-2 text-[10px] font-black border border-gray-200 hover:bg-red-50 rounded-lg transition-all uppercase tracking-tighter">Pilih Semua Eksternal</button>
             </div>
           )}
 
           {/* Search & Select All */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <input type="text" value={masalSearch} onChange={e => setMasalSearch(e.target.value)} placeholder="🔍 Cari nama atau NIK..." className="flex-1 border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-[#D4AF37]/40 focus:border-[#D4AF37] outline-none" />
-            <button type="button" onClick={handleMasalSelectAll} className="px-4 py-2 text-xs font-bold border rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
-              {masalPersons.length > 0 && masalPersons.every(p => masalChecked.has(p.id)) ? '☐ Batal Semua' : '☑ Pilih Semua'}
-            </button>
+            <div className="flex gap-2">
+              <button type="button" onClick={handleMasalSelectAll} className="px-4 py-2 text-xs font-bold border rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap">
+                {masalPersons.length > 0 && masalPersons.every(p => masalChecked.has(p.id)) ? '☐ Batal Semua' : '☑ Pilih Semua'}
+              </button>
+              {masalChecked.size > 0 && (
+                <button type="button" onClick={() => setMasalChecked(new Set())} className="px-4 py-2 text-xs font-bold border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1">
+                  🗑️ Hapus Semua
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Tabel Checklist */}
@@ -404,24 +455,42 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {masalPersons.length === 0 ? (
-                  <tr><td colSpan={masalTab === 'honor' ? 6 : 4} className="p-6 text-center text-gray-400 italic">Tidak ada data ditemukan.</td></tr>
+                  <tr><td colSpan={masalTab === 'honor' ? 7 : 4} className="p-6 text-center text-gray-400 italic">Tidak ada data ditemukan.</td></tr>
                 ) : masalPersons.map(p => {
                   const isChecked = masalChecked.has(p.id);
                   const nom = masalTab === 'transport' ? Number(masalNominal) || 0 : Number(masalNominals[p.id]) || 0;
                   const pph = isChecked ? calcMasalPph21(p, nom) : 0;
+                  // Konstanta lokal untuk memastikan konsistensi render per baris
+                  const isHonorTab = masalTab === 'honor';
+                  
                   return (
                     <tr key={p.id} onClick={() => handleMasalToggle(p.id)} className={`cursor-pointer transition-colors ${isChecked ? 'bg-blue-50/70' : 'hover:bg-gray-50'}`}>
                       <td className="p-3"><input type="checkbox" checked={isChecked} readOnly className="w-4 h-4 accent-[#D4AF37]" /></td>
-                      {masalTab === 'honor' && <td className="p-3 font-mono text-xs">{p.nip}</td>}
+                      {isHonorTab && <td className="p-3 font-mono text-xs">{p.nip}</td>}
                       <td className="p-3 font-mono text-xs">{p.nik}</td>
                       <td className="p-3 font-bold">{p.nama}</td>
-                      {masalTab === 'honor' && <td className="p-3"><span className="px-2 py-0.5 bg-gray-100 rounded text-xs font-semibold">Gol. {p.golongan}</span></td>}
-                      {masalTab === 'honor' && (
-                        <td className="p-3" onClick={e => e.stopPropagation()}>
-                          <input type="number" value={masalNominals[p.id] || ''} onChange={e => setMasalNominals(prev => ({ ...prev, [p.id]: e.target.value }))} placeholder="0" className="w-full border rounded px-2 py-1 text-sm text-right" disabled={!isChecked} />
+                      {isHonorTab && (
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 bg-gray-100 rounded text-xs font-semibold">
+                            Gol. {p.golongan}
+                          </span>
                         </td>
                       )}
-                      <td className="p-3 text-right font-semibold text-red-600">{isChecked && nom > 0 ? formatRupiah(pph) : '-'}</td>
+                      {isHonorTab && (
+                        <td className="p-3" onClick={e => e.stopPropagation()}>
+                          <input 
+                            type="number" 
+                            value={masalNominals[p.id] || ''} 
+                            onChange={e => setMasalNominals(prev => ({ ...prev, [p.id]: e.target.value }))} 
+                            placeholder="0" 
+                            className="w-full border rounded px-2 py-1 text-sm text-right" 
+                            disabled={!isChecked} 
+                          />
+                        </td>
+                      )}
+                      <td className="p-3 text-right font-semibold text-red-600">
+                        {isChecked && nom > 0 ? formatRupiah(pph) : '-'}
+                      </td>
                     </tr>
                   );
                 })}
@@ -460,11 +529,11 @@ export const FormCetakSPJ = ({ rekenings, subKegiatans, kegiatans, realisasiGU, 
   const guOptions = Array.from({ length: 24 }, (_, i) => `GU-${String(i + 1).padStart(2, '0')}`);
   guOptions.push('GU-Nihil');
 
-  const availableRekenings = useMemo(() => rekenings.filter(r => String(r.tahun_anggaran) === String(filter.tahun_anggaran) && String(r.tahap_anggaran) === String(filter.tahap_anggaran) && String(r.kode_subkegiatan) === String(filter.kode_subkegiatan)), [rekenings, filter]);
+  const availableRekenings = useMemo(() => (rekenings || []).filter(r => String(r.tahun_anggaran) === String(filter.tahun_anggaran) && String(r.tahap_anggaran) === String(filter.tahap_anggaran) && String(r.kode_subkegiatan) === String(filter.kode_subkegiatan)), [rekenings, filter]);
 
   const availableNotes = useMemo(() => {
     if (!filter.kode_rekening) return [];
-    return realisasiGU.filter(r =>
+    return (realisasiGU || []).filter(r =>
       String(r.tahun_anggaran) === String(filter.tahun_anggaran) &&
       String(r.tahap_anggaran) === String(filter.tahap_anggaran) &&
       String(r.bulan_spj) === String(filter.bulan_spj) &&
@@ -488,14 +557,14 @@ export const FormCetakSPJ = ({ rekenings, subKegiatans, kegiatans, realisasiGU, 
     if (!inputBidang) return showToast('Harap pilih Nama Bidang!', 'error');
     setIsSubmitting(true);
     const temporaryIdSpj = `DRAFT-${Date.now()}`;
-    
+
     const selectedNotaData = availableNotes.filter(n => selectedNotes.includes(n.timestamp));
     const totalKotor = selectedNotaData.reduce((sum, n) => sum + Number(n.nominal_nota || 0), 0);
     const totalPpn = selectedNotaData.reduce((sum, n) => sum + Number(n.ppn || 0), 0);
     const totalPph21 = selectedNotaData.reduce((sum, n) => sum + Number(n.pph21 || 0), 0);
     const totalPph22 = selectedNotaData.reduce((sum, n) => sum + Number(n.pph22 || 0), 0);
     const totalPph23 = selectedNotaData.reduce((sum, n) => sum + Number(n.pph23 || 0), 0);
-    
+
     const payloadData = {
       action: 'buat_spj_bundle',
       payload: {
@@ -523,15 +592,15 @@ export const FormCetakSPJ = ({ rekenings, subKegiatans, kegiatans, realisasiGU, 
         setShowModalBidang(false);
         setSelectedNotes([]);
         setInputBidang('');
-        
+
         // Update state lokal — nota yang dipilih jadi 'Diproses'
         const selectedIdNotas = selectedNotaData.map(n => String(n.id_nota));
-        setRealisasiGU(prev => prev.map(n => 
+        setRealisasiGU(prev => prev.map(n =>
           selectedIdNotas.includes(String(n.id_nota))
             ? { ...n, status_nota: 'Diproses', status_spj: 'Diproses', id_spj: temporaryIdSpj }
             : n
         ));
-        
+
         // Tambahkan SPJ baru ke dataSPJ
         setDataSPJ(prev => [...prev, {
           id_spj: temporaryIdSpj,
@@ -564,8 +633,8 @@ export const FormCetakSPJ = ({ rekenings, subKegiatans, kegiatans, realisasiGU, 
         <SelectField label="Tahap" value={filter.tahap_anggaran} onChange={e => setFilter({ ...filter, tahap_anggaran: e.target.value })}><option value="Induk">Induk (Murni)</option><option value="Perubahan">Perubahan (PAK)</option></SelectField>
         <SelectField label="Bulan SPJ" value={filter.bulan_spj} onChange={e => setFilter({ ...filter, bulan_spj: e.target.value })}><option value="">-- Pilih Bulan --</option>{['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(b => <option key={b} value={b}>{b}</option>)}</SelectField>
         <SelectField label="Proses GU" value={filter.proses_gu} onChange={e => setFilter({ ...filter, proses_gu: e.target.value })}>{guOptions.map(gu => <option key={gu} value={gu}>{gu}</option>)}</SelectField>
-        <div className="md:col-span-2"><SelectField label="Sub Kegiatan" value={filter.kode_subkegiatan} onChange={e => setFilter({ ...filter, kode_subkegiatan: e.target.value, kode_rekening: '' })}><option value="">-- Pilih Sub Kegiatan --</option>{subKegiatans.map(s => <option key={s.kode_subkegiatan} value={s.kode_subkegiatan}>[{s.kode_subkegiatan}] {s.nama_subkegiatan}</option>)}</SelectField></div>
-        <div className="md:col-span-2"><SelectField label="Rekening Belanja" value={filter.kode_rekening} onChange={e => setFilter({ ...filter, kode_rekening: e.target.value })} disabled={!filter.kode_subkegiatan}><option value="">-- Pilih Rekening --</option>{availableRekenings.map(r => <option key={r.kode_rekening} value={r.kode_rekening}>[{r.kode_rekening}] {r.nama_rekening}</option>)}</SelectField></div>
+        <div className="md:col-span-2"><SelectField label="Sub Kegiatan" value={filter.kode_subkegiatan} onChange={e => setFilter({ ...filter, kode_subkegiatan: e.target.value, kode_rekening: '' })}><option value="">-- Pilih Sub Kegiatan --</option>{(subKegiatans || []).map(s => <option key={s.kode_subkegiatan} value={s.kode_subkegiatan}>[{s.kode_subkegiatan}] {s.nama_subkegiatan}</option>)}</SelectField></div>
+        <div className="md:col-span-2"><SelectField label="Rekening Belanja" value={filter.kode_rekening} onChange={e => setFilter({ ...filter, kode_rekening: e.target.value })} disabled={!filter.kode_subkegiatan}><option value="">-- Pilih Rekening --</option>{(availableRekenings || []).map(r => <option key={r.kode_rekening} value={r.kode_rekening}>[{r.kode_rekening}] {r.nama_rekening}</option>)}</SelectField></div>
       </div>
 
       {filter.kode_rekening && (
@@ -758,7 +827,7 @@ export const PrintLayout = ({ data, onBack }) => {
     <div className="bg-gray-200 print:bg-white min-h-screen pb-12 font-sans">
       <div className="sticky top-0 bg-[#0A192F] text-white p-4 shadow-md flex justify-between items-center z-50 print:hidden">
         <button onClick={onBack} className="flex items-center px-4 py-2 bg-white/10 rounded hover:bg-white/20"><ArrowLeft size={18} className="mr-2" /> Kembali</button>
-        <div className="font-bold text-[#D4AF37]">Print Preview SPJ (Kertas F4 / Folio)</div>
+        <div className="font-bold text-[#D4AF37]">Print Preview SPJ</div>
         <button onClick={() => window.print()} className="flex items-center px-6 py-2 bg-[#D4AF37] text-[#0A192F] rounded font-bold hover:opacity-90"><Printer size={18} className="mr-2" /> Simpan PDF / Cetak</button>
       </div>
 
@@ -1087,19 +1156,6 @@ export const PrintLayout = ({ data, onBack }) => {
               </tr>
             </tbody>
           </table>
-
-          {/* PERBAIKAN TANDA TANGAN HALAMAN 3 (RATA BAWAH) */}
-          <div className="signature-section flex justify-end text-center mt-12 px-8">
-            <div className="w-[40%] flex flex-col justify-between h-[120px]">
-              <div>
-                <p>Pengguna Anggaran</p>
-              </div>
-              <div>
-                <div className="font-bold underline uppercase nowrap-name">{data.pejabat.pa?.nama}</div>
-                <div className="nowrap-name">NIP. {cleanNIP(data.pejabat.pa?.nip)}</div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
