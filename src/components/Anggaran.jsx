@@ -50,7 +50,7 @@ export const FormSubKegiatan = ({ onSave, isLoading, kegiatans }) => {
 };
 
 export const FormRekening = ({ onSave, isLoading, subKegiatans, rekenings, refreshData, gasUrl, setModal, showToast }) => {
-  const [formData, setFormData] = useState({ kode_subkegiatan: '', kode_rekening: '', nama_rekening: '', pagu: '', tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'Induk' });
+  const [formData, setFormData] = useState({ kode_subkegiatan: '', kode_rekening: '', nama_rekening: '', pagu: '', tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD' });
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [isImporting, setIsImporting] = useState(false);
@@ -151,7 +151,7 @@ export const FormRekening = ({ onSave, isLoading, subKegiatans, rekenings, refre
             <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option>
           </SelectField>
           <SelectField label="Tahap Anggaran" value={formData.tahap_anggaran} onChange={e => setFormData({...formData, tahap_anggaran: e.target.value})} required>
-            <option value="Induk">Induk (Murni)</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Perubahan">Perubahan (PAK)</option>
+            <option value="APBD">APBD</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Pergeseran 2">Pergeseran 2</option><option value="Perubahan">Perubahan (PAK)</option>
           </SelectField>
         </div>
         <SelectField label="Pilih Sub Kegiatan" value={formData.kode_subkegiatan} onChange={e => setFormData({...formData, kode_subkegiatan: e.target.value})} required>

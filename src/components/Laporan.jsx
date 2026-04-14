@@ -19,7 +19,7 @@ const exportToCSV = (filename, rows) => {
 
 export const LaporanRekapGU = ({ realisasiGU, rekenings, subKegiatans }) => {
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
-  const [filterTahap, setFilterTahap] = useState('Induk');
+  const [filterTahap, setFilterTahap] = useState('APBD');
   const [filterGU, setFilterGU] = useState('GU-01');
 
   const guOptions = Array.from({ length: 24 }, (_, i) => `GU-${String(i + 1).padStart(2, '0')}`);
@@ -88,10 +88,10 @@ export const LaporanRekapGU = ({ realisasiGU, rekenings, subKegiatans }) => {
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border">
         <SelectField label="Tahun" value={filterTahun} onChange={e => setFilterTahun(e.target.value)}>
-          <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option>
+          {Array.from(new Set(rekenings.map(r => String(r.tahun_anggaran)))).sort((a,b) => b-a).map(y => <option key={y} value={y}>{y}</option>)}
         </SelectField>
         <SelectField label="Tahap" value={filterTahap} onChange={e => setFilterTahap(e.target.value)}>
-          <option value="Induk">Induk (Murni)</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Perubahan">Perubahan (PAK)</option>
+          <option value="APBD">APBD</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Pergeseran 2">Pergeseran 2</option><option value="Perubahan">Perubahan (PAK)</option>
         </SelectField>
         <SelectField label="Proses GU" value={filterGU} onChange={e => setFilterGU(e.target.value)}>
           {guOptions.map(gu => <option key={gu} value={gu}>{gu}</option>)}

@@ -7,7 +7,7 @@ import logoSurakarta from '../assets/logo-surakarta.png';
 
 export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, realisasiGU, setRealisasiGU, pegawaiASN, wpPribadi, wpPihakKetiga, showToast, kop21, kopUNI }) => {
   const [formData, setFormData] = useState({
-    tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'Induk', bulan_spj: '', proses_gu: 'GU-01',
+    tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD', bulan_spj: '', proses_gu: 'GU-01',
     kode_subkegiatan: '', kode_rekening: '', tanggal_nota: '', keterangan_nota: '', nik_vendor: '', nama_vendor: '', punya_npwp: false,
     tipe_vendor: '', golongan_vendor: '', kategori_pajak: '', kop_pajak: '', nominal_nota: '', ppn: 0, pph21: 0, pph22: 0, pph23: 0
   });
@@ -254,8 +254,12 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
 
       {/* === SECTION 1: FILTER HEADER === */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4 p-4 rounded-lg bg-blue-50 border border-blue-100">
-        <SelectField label="Tahun" value={formData.tahun_anggaran} onChange={e => setFormData({ ...formData, tahun_anggaran: e.target.value })} required><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option></SelectField>
-        <SelectField label="Tahap" value={formData.tahap_anggaran} onChange={e => setFormData({ ...formData, tahap_anggaran: e.target.value })} required><option value="Induk">Induk (Murni)</option><option value="Perubahan">Perubahan (PAK)</option></SelectField>
+        <SelectField label="Tahun" value={formData.tahun_anggaran} onChange={e => setFormData({ ...formData, tahun_anggaran: e.target.value })} required>
+          {Array.from(new Set(rekenings.map(r => String(r.tahun_anggaran)))).sort((a,b) => b-a).map(y => <option key={y} value={y}>{y}</option>)}
+        </SelectField>
+        <SelectField label="Tahap" value={formData.tahap_anggaran} onChange={e => setFormData({ ...formData, tahap_anggaran: e.target.value })} required>
+          <option value="APBD">APBD</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Pergeseran 2">Pergeseran 2</option><option value="Perubahan">Perubahan (PAK)</option>
+        </SelectField>
         <SelectField label="Bulan SPJ" value={formData.bulan_spj} onChange={e => setFormData({ ...formData, bulan_spj: e.target.value })} required><option value="">-- Bulan --</option>{['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(b => <option key={b} value={b}>{b}</option>)}</SelectField>
         <SelectField label="Proses GU" value={formData.proses_gu} onChange={e => setFormData({ ...formData, proses_gu: e.target.value })} required>{guOptions.map(gu => <option key={gu} value={gu}>{gu}</option>)}</SelectField>
       </div>
@@ -520,7 +524,7 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
 };
 
 export const FormCetakSPJ = ({ rekenings, subKegiatans, kegiatans, realisasiGU, setRealisasiGU, dataSPJ, setDataSPJ, pegawaiASN, setPrintData, printedNotes, setPrintedNotes, onUpdate, isLoading, showToast }) => {
-  const [filter, setFilter] = useState({ tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'Induk', bulan_spj: '', proses_gu: 'GU-01', kode_subkegiatan: '', kode_rekening: '' });
+  const [filter, setFilter] = useState({ tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD', bulan_spj: '', proses_gu: 'GU-01', kode_subkegiatan: '', kode_rekening: '' });
   const [selectedNotes, setSelectedNotes] = useState([]);
   const [showModalBidang, setShowModalBidang] = useState(false);
   const [inputBidang, setInputBidang] = useState('');
@@ -629,8 +633,12 @@ export const FormCetakSPJ = ({ rekenings, subKegiatans, kegiatans, realisasiGU, 
     <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm border p-6 animate-in fade-in">
       <h2 className="text-xl font-bold mb-6 pb-2 border-b flex items-center"><Printer size={20} className="mr-2" /> Pengajuan SPJ</h2>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4 bg-gray-50 p-4 rounded border">
-        <SelectField label="Tahun" value={filter.tahun_anggaran} onChange={e => setFilter({ ...filter, tahun_anggaran: e.target.value })}><option value="2025">2025</option><option value="2026">2026</option></SelectField>
-        <SelectField label="Tahap" value={filter.tahap_anggaran} onChange={e => setFilter({ ...filter, tahap_anggaran: e.target.value })}><option value="Induk">Induk (Murni)</option><option value="Perubahan">Perubahan (PAK)</option></SelectField>
+        <SelectField label="Tahun" value={filter.tahun_anggaran} onChange={e => setFilter({ ...filter, tahun_anggaran: e.target.value })}>
+          {Array.from(new Set(rekenings.map(r => String(r.tahun_anggaran)))).sort((a,b) => b-a).map(y => <option key={y} value={y}>{y}</option>)}
+        </SelectField>
+        <SelectField label="Tahap" value={filter.tahap_anggaran} onChange={e => setFilter({ ...filter, tahap_anggaran: e.target.value })}>
+          <option value="APBD">APBD</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Pergeseran 2">Pergeseran 2</option><option value="Perubahan">Perubahan (PAK)</option>
+        </SelectField>
         <SelectField label="Bulan SPJ" value={filter.bulan_spj} onChange={e => setFilter({ ...filter, bulan_spj: e.target.value })}><option value="">-- Pilih Bulan --</option>{['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(b => <option key={b} value={b}>{b}</option>)}</SelectField>
         <SelectField label="Proses GU" value={filter.proses_gu} onChange={e => setFilter({ ...filter, proses_gu: e.target.value })}>{guOptions.map(gu => <option key={gu} value={gu}>{gu}</option>)}</SelectField>
         <div className="md:col-span-2"><SelectField label="Sub Kegiatan" value={filter.kode_subkegiatan} onChange={e => setFilter({ ...filter, kode_subkegiatan: e.target.value, kode_rekening: '' })}><option value="">-- Pilih Sub Kegiatan --</option>{(subKegiatans || []).map(s => <option key={s.kode_subkegiatan} value={s.kode_subkegiatan}>[{s.kode_subkegiatan}] {s.nama_subkegiatan}</option>)}</SelectField></div>

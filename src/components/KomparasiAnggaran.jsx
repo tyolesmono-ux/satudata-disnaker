@@ -6,16 +6,30 @@ import { theme } from '../config/constants';
 
 export const KomparasiAnggaran = ({ rekenings, subKegiatans }) => {
   const currentYear = new Date().getFullYear().toString();
-  const [tahunAnggaran, setTahunAnggaran] = useState(currentYear);
-  const [tahapAwal, setTahapAwal] = useState('Induk');
+  const [tahunAnggaran, setTahunAnggaran] = useState(new Date().getFullYear().toString());
+  const [tahapAwal, setTahapAwal] = useState('APBD');
   const [tahapAkhir, setTahapAkhir] = useState('Pergeseran 1');
 
   // Dapatkan daftar tahap unik dari data
+  const availableTahun = useMemo(() => {
+    const years = new Set((rekenings || []).map(r => String(r.tahun_anggaran)).filter(Boolean));
+    const sorted = Array.from(years).sort((a, b) => b - a);
+    return sorted.length > 0 ? sorted : [new Date().getFullYear().toString()];
+  }, [rekenings]);
+
   const availableTahap = useMemo(() => {
     const tahaps = new Set((rekenings || []).map(r => r.tahap_anggaran).filter(Boolean));
-    // Jika kosong, berikan default umum
-    if (tahaps.size === 0) return ['Induk', 'Pergeseran 1', 'Pergeseran 2', 'Perubahan', 'Efisiensi'];
-    return Array.from(tahaps);
+    if (tahaps.size === 0) return ['APBD', 'Pergeseran 1', 'Pergeseran 2', 'Perubahan'];
+    
+    const order = ['APBD', 'Pergeseran 1', 'Pergeseran 2', 'Perubahan'];
+    return Array.from(tahaps).sort((a, b) => {
+      const idxA = order.indexOf(a);
+      const idxB = order.indexOf(b);
+      if (idxA === -1 && idxB === -1) return a.localeCompare(b);
+      if (idxA === -1) return 1;
+      if (idxB === -1) return -1;
+      return idxA - idxB;
+    });
   }, [rekenings]);
 
   const { dataKomparasi, summary } = useMemo(() => {
@@ -140,9 +154,7 @@ export const KomparasiAnggaran = ({ rekenings, subKegiatans }) => {
             {availableTahap.map(t => <option key={t} value={t}>{t}</option>)}
           </SelectField>
           <SelectField label="Filter Tahun" value={tahunAnggaran} onChange={e => setTahunAnggaran(e.target.value)}>
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
-            <option value="2027">2027</option>
+            {availableTahun.map(y => <option key={y} value={y}>{y}</option>)}
           </SelectField>
         </div>
       </div>

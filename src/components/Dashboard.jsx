@@ -6,10 +6,35 @@ import { formatRupiah } from '../utils/helpers';
 
 export default function DashboardView({ programs, kegiatans, subKegiatans, rekenings, realisasiGU = [] }) {
   const [dashTahun, setDashTahun] = useState(new Date().getFullYear().toString());
-  const [dashTahap, setDashTahap] = useState('Induk');
+  const [dashTahap, setDashTahap] = useState('APBD');
   const [filterProgram, setFilterProgram] = useState('');
   const [filterKegiatan, setFilterKegiatan] = useState('');
   const [filterSubkegiatan, setFilterSubkegiatan] = useState('');
+  
+  const availableTahun = useMemo(() => {
+    const years = new Set();
+    rekenings.forEach(r => { if (r.tahun_anggaran) years.add(String(r.tahun_anggaran)); });
+    realisasiGU.forEach(r => { if (r.tahun_anggaran) years.add(String(r.tahun_anggaran)); });
+    const sorted = Array.from(years).sort((a, b) => b - a);
+    return sorted.length > 0 ? sorted : [new Date().getFullYear().toString()];
+  }, [rekenings, realisasiGU]);
+
+  const availableTahap = useMemo(() => {
+    const stages = new Set();
+    rekenings.forEach(r => { if (r.tahap_anggaran) stages.add(r.tahap_anggaran); });
+    realisasiGU.forEach(r => { if (r.tahap_anggaran) stages.add(r.tahap_anggaran); });
+    
+    const order = ['APBD', 'Pergeseran 1', 'Pergeseran 2', 'Perubahan'];
+    const sorted = Array.from(stages).sort((a, b) => {
+      const idxA = order.indexOf(a);
+      const idxB = order.indexOf(b);
+      if (idxA === -1 && idxB === -1) return a.localeCompare(b);
+      if (idxA === -1) return 1;
+      if (idxB === -1) return -1;
+      return idxA - idxB;
+    });
+    return sorted.length > 0 ? sorted : ['APBD'];
+  }, [rekenings, realisasiGU]);
 
   const dashboardStats = useMemo(() => {
     const activeRekenings = rekenings.filter(r => String(r.tahun_anggaran) === String(dashTahun) && String(r.tahap_anggaran) === String(dashTahap));
@@ -95,10 +120,10 @@ export default function DashboardView({ programs, kegiatans, subKegiatans, reken
         <h2 className="text-2xl font-bold" style={{ color: theme.navy }}>Dashboard Anggaran</h2>
         <div className="flex gap-2 bg-white p-2 rounded-lg border shadow-sm">
           <select value={dashTahun} onChange={e => setDashTahun(e.target.value)} className="px-3 py-1.5 border-r focus:ring-0 outline-none text-sm font-semibold text-gray-700 cursor-pointer bg-transparent">
-            <option value="2025">Tahun 2025</option><option value="2026">Tahun 2026</option><option value="2027">Tahun 2027</option>
+            {availableTahun.map(y => <option key={y} value={y}>Tahun {y}</option>)}
           </select>
           <select value={dashTahap} onChange={e => setDashTahap(e.target.value)} className="px-3 py-1.5 focus:ring-0 outline-none text-sm font-semibold text-gray-700 cursor-pointer bg-transparent">
-            <option value="Induk">Induk (Murni)</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Perubahan">Perubahan (PAK)</option>
+            {availableTahap.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
       </div>
