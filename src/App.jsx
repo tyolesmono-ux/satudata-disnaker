@@ -12,6 +12,7 @@ import { FormRealisasiGU, FormCetakSPJ, PrintLayout } from './components/Realisa
 import VerifikasiSPJ from './components/VerifikasiSPJ';
 import { LaporanRekapGU, LaporanCoreTax, LaporanSIMDTH } from './components/Laporan';
 import { KomparasiAnggaran } from './components/KomparasiAnggaran';
+import logo from './assets/satudata-logo.png';
 
 export default function App() {
   const [activeMenu, setActiveMenu] = useState('dashboard');
@@ -157,9 +158,18 @@ export default function App() {
     <div className="flex h-screen font-sans bg-[#F3F4F6]">
       {/* SIDEBAR */}
       <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} flex flex-col transition-all duration-300 shadow-xl z-20 overflow-y-auto bg-[#0A192F]`}>
-        <div className="flex items-center justify-between p-5 mb-4">
-          {sidebarOpen && <h1 className="text-2xl font-black tracking-wider text-[#D4AF37]">Satu<span className="text-white">Data</span></h1>}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 rounded-md hover:bg-white/10 text-white transition-colors"><Menu size={24} /></button>
+        <div className={`relative p-5 mb-4 flex items-center ${sidebarOpen ? 'justify-center' : 'justify-center'}`}>
+          {sidebarOpen && (
+            <div className="bg-white p-3 rounded-2xl shadow-lg border border-white/20 flex items-center justify-center">
+              <img src={logo} alt="SatuData Logo" className="h-16 w-auto" />
+            </div>
+          )}
+          <button 
+            onClick={() => setSidebarOpen(!sidebarOpen)} 
+            className={`${sidebarOpen ? 'absolute right-5' : ''} p-1 rounded-md hover:bg-white/10 text-white transition-colors`}
+          >
+            <Menu size={24} />
+          </button>
         </div>
         <nav className="flex-1 px-3 space-y-2 pb-6">
           <button onClick={() => setActiveMenu('dashboard')} className={`w-full flex items-center p-3 rounded-lg transition-colors ${activeMenu === 'dashboard' ? 'bg-white/10' : 'hover:bg-white/5'}`}>
