@@ -173,14 +173,15 @@ export const KomparasiAnggaran = ({ rekenings, subKegiatans }) => {
           <p className="text-2xl font-black text-[#D4AF37] mt-1 relative z-10">{formatRupiah(summary.totalPerubahan)}</p>
         </div>
 
-        <div className={`p-5 rounded-2xl shadow-sm border relative overflow-hidden group ${summary.defisitSurplus > 0 ? 'bg-red-50 border-red-100' : summary.defisitSurplus < 0 ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100'}`}>
+        <div className={`p-5 rounded-2xl shadow-sm border relative overflow-hidden group ${summary.defisitSurplus > 0 ? 'bg-green-50 border-green-100' : summary.defisitSurplus < 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
           <div className="absolute top-0 right-0 w-24 h-24 bg-white/40 rounded-full -translate-y-8 translate-x-8 group-hover:bg-white/60 transition-colors duration-500"></div>
-          <p className={`text-sm font-semibold relative z-10 ${summary.defisitSurplus > 0 ? 'text-red-700' : summary.defisitSurplus < 0 ? 'text-green-700' : 'text-gray-500'}`}>
+          <p className={`text-sm font-semibold relative z-10 ${summary.defisitSurplus > 0 ? 'text-green-700' : summary.defisitSurplus < 0 ? 'text-red-700' : 'text-gray-500'}`}>
             <span className="flex items-center gap-1">
-              <ArrowRightLeft size={16} /> Total Defisit / Surplus Pergeseran
+              {summary.defisitSurplus > 0 ? <TrendingUp size={16} /> : summary.defisitSurplus < 0 ? <TrendingDown size={16} /> : <ArrowRightLeft size={16} />} 
+              {summary.defisitSurplus > 0 ? 'Total Anggaran Bertambah' : summary.defisitSurplus < 0 ? 'Total Anggaran Berkurang' : 'Total Anggaran Tetap'}
             </span>
           </p>
-          <p className={`text-2xl font-black mt-1 relative z-10 ${summary.defisitSurplus > 0 ? 'text-red-600' : summary.defisitSurplus < 0 ? 'text-green-600' : 'text-gray-600'}`}>
+          <p className={`text-2xl font-black mt-1 relative z-10 ${summary.defisitSurplus > 0 ? 'text-green-600' : summary.defisitSurplus < 0 ? 'text-red-600' : 'text-gray-600'}`}>
             {summary.defisitSurplus > 0 ? '+' : ''}{formatRupiah(summary.defisitSurplus)}
           </p>
         </div>
