@@ -14,7 +14,7 @@ export const FormContainer = ({ title, children, onSubmit, isSubmitting }) => (
       <fieldset disabled={isSubmitting}>
         {children}
         <div className="pt-6 flex justify-end">
-          <button type="submit" className="flex items-center px-8 py-3 text-white bg-[#0A192F] rounded-lg transition-all duration-300 hover:bg-[#122442] hover:shadow-lg hover:shadow-[#0A192F]/20 hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none group focus:outline-none focus:ring-4 focus:ring-[#D4AF37]/30">
+          <button type="submit" className="flex items-center px-8 py-3 text-white bg-[#0A192F] rounded-lg transition-all duration-300 hover:bg-[#122442] hover:shadow-lg hover:shadow-[#0A192F]/20 hover-scale hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none group focus:outline-none focus:ring-4 focus:ring-[#D4AF37]/30">
             {isSubmitting ? (
               <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div> Menyimpan...</>
             ) : (

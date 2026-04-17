@@ -172,12 +172,12 @@ export default function App() {
           </button>
         </div>
         <nav className="flex-1 px-3 space-y-2 pb-6">
-          <button onClick={() => setActiveMenu('dashboard')} className={`w-full flex items-center p-3 rounded-lg transition-colors ${activeMenu === 'dashboard' ? 'bg-white/10' : 'hover:bg-white/5'}`}>
+          <button onClick={() => setActiveMenu('dashboard')} className={`w-full flex items-center p-3 rounded-lg transition-all duration-300 hover-scale ${activeMenu === 'dashboard' ? 'bg-white/10 shadow-lg' : 'hover:bg-white/5'}`}>
             <LayoutDashboard size={20} style={{ color: activeMenu === 'dashboard' ? theme.gold : '#9ca3af' }} className="shrink-0" />
             {sidebarOpen && <span className="ml-3 font-medium text-white">Dashboard</span>}
           </button>
           <div className="pt-2">
-            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'anggaran' ? null : 'anggaran'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5">
+            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'anggaran' ? null : 'anggaran'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-all duration-300 hover-scale hover:bg-white/5">
               <div className="flex items-center"><Wallet size={20} style={{ color: activeMenu.startsWith('input') || activeMenu === 'komparasi_anggaran' ? theme.gold : '#9ca3af' }} className="shrink-0" />{sidebarOpen && <span className="ml-3 font-medium text-white">Anggaran</span>}</div>
               {sidebarOpen && (expandedMenu === 'anggaran' ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
             </button>
@@ -190,13 +190,13 @@ export default function App() {
             )}
           </div>
           <div className="pt-2">
-            <button onClick={() => setActiveMenu('komparasi_anggaran')} className={`w-full flex items-center p-3 rounded-lg transition-colors ${activeMenu === 'komparasi_anggaran' ? 'bg-white/10' : 'hover:bg-white/5'}`}>
+            <button onClick={() => setActiveMenu('komparasi_anggaran')} className={`w-full flex items-center p-3 rounded-lg transition-all duration-300 hover-scale ${activeMenu === 'komparasi_anggaran' ? 'bg-white/10 shadow-lg' : 'hover:bg-white/5'}`}>
               <BarChart size={20} style={{ color: activeMenu === 'komparasi_anggaran' ? theme.gold : '#9ca3af' }} className="shrink-0" />
               {sidebarOpen && <span className="ml-3 font-medium text-white">Analisis Pergeseran</span>}
             </button>
           </div>
           <div className="pt-2">
-            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'wp' ? null : 'wp'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5">
+            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'wp' ? null : 'wp'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-all duration-300 hover-scale hover:bg-white/5">
               <div className="flex items-center"><Users size={20} style={{ color: activeMenu.startsWith('wp_') ? theme.gold : '#9ca3af' }} className="shrink-0" />{sidebarOpen && <span className="ml-3 font-medium text-white">Wajib Pajak</span>}</div>
               {sidebarOpen && (expandedMenu === 'wp' ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
             </button>
@@ -209,7 +209,7 @@ export default function App() {
             )}
           </div>
           <div className="pt-2">
-            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'realisasi' ? null : 'realisasi'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5 group">
+            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'realisasi' ? null : 'realisasi'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-all duration-300 hover-scale hover:bg-white/5 group">
               <div className="flex items-center">
                 <ReceiptText size={20} style={{ color: activeMenu.startsWith('realisasi_') || activeMenu === 'cetak_spj' || activeMenu === 'verifikasi_spj' ? theme.gold : '#9ca3af' }} className="shrink-0" />
                 {sidebarOpen && <span className="ml-3 font-medium text-white">Realisasi / SPJ</span>}
@@ -225,7 +225,7 @@ export default function App() {
             )}
           </div>
           <div className="pt-2">
-            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'laporan' ? null : 'laporan'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-white/5 group">
+            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'laporan' ? null : 'laporan'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-all duration-300 hover-scale hover:bg-white/5 group">
               <div className="flex items-center">
                 <FileText size={20} style={{ color: activeMenu.startsWith('laporan_') ? theme.gold : '#9ca3af' }} className="shrink-0" />
                 {sidebarOpen && <span className="ml-3 font-medium text-white">Laporan</span>}
@@ -250,7 +250,7 @@ export default function App() {
         </header>
 
         <div className="flex-1 overflow-auto p-8">
-          <div key={activeMenu} className="animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out fill-mode-both">
+          <div key={activeMenu} className="page-transition">
             {/* ROUTING KONTEN */}
             {activeMenu === 'dashboard' && <DashboardView programs={programs} kegiatans={kegiatans} subKegiatans={subKegiatans} rekenings={rekenings} realisasiGU={realisasiGU} />}
             

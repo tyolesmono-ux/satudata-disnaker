@@ -212,11 +212,11 @@ export default function VerifikasiSPJ({ dataSPJ, setDataSPJ, realisasiGU, setRea
                         </span>
                       </td>
                       <td className="p-4 flex gap-2 justify-center">
-                        <button onClick={() => handleCetak(spj)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A192F] text-white hover:bg-[#122442] rounded-md transition-colors text-xs font-bold" title="Cetak SPJ"><Printer size={14} /> Cetak</button>
+                        <button onClick={() => handleCetak(spj)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A192F] text-white hover:bg-[#122442] rounded-md transition-all hover-scale text-xs font-bold" title="Cetak SPJ"><Printer size={14} /> Cetak</button>
                         <button
                           onClick={() => handleInputPajak(spj)}
                           disabled={isPajakDone}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors text-xs font-bold ${isPajakDone ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed' : 'bg-[#D4AF37] text-white hover:bg-[#b8952b]'}`}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all duration-300 hover-scale text-xs font-bold ${isPajakDone ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed' : 'bg-[#D4AF37] text-white hover:bg-[#b8952b]'}`}
                           title={isPajakDone ? 'Pajak sudah diinput' : 'Update Billing/NTPN Pajak'}
                         >
                           {isPajakDone ? <><Lock size={12} /> Terkunci</> : 'Pajak'}

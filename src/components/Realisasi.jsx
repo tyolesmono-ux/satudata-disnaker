@@ -737,7 +737,7 @@ export const FormCetakSPJ = ({ rekenings, subKegiatans, kegiatans, realisasiGU, 
               </div>
               <button
                 onClick={handleCetakClick}
-                className="px-8 py-3 bg-[#0A192F] text-white font-bold rounded-xl shadow-lg shadow-[#0A192F]/20 hover:bg-[#122442] hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 group"
+                className="px-8 py-3 bg-[#0A192F] text-white font-bold rounded-xl shadow-lg shadow-[#0A192F]/20 hover:bg-[#122442] hover-scale hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 group"
               >
                 <FileText size={20} className="text-[#D4AF37] group-hover:scale-110 transition-transform" />
                 Buat SPJ
