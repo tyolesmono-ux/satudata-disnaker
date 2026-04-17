@@ -245,7 +245,7 @@ export default function App() {
 
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="bg-white shadow-sm h-16 flex items-center px-8 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-700 capitalize">{activeMenu.replace(/_/g, ' ')}</h2>
+
           {isFetchingData && <span className="ml-4 text-sm text-gray-500 animate-pulse">(Sedang sinkronisasi data dengan Spreadsheet...)</span>}
         </header>
 

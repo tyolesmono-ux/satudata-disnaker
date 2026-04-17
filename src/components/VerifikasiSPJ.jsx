@@ -195,7 +195,7 @@ export default function VerifikasiSPJ({ dataSPJ, setDataSPJ, realisasiGU, setRea
                   const isPajakDone = spj.status_spj === 'Valid';
                   return (
                     <tr key={i} className="hover:bg-blue-50/40 transition-colors">
-                      <td className="p-4 text-xs font-bold font-mono">{spj.no_spj_resmi || spj.id_spj}</td>
+                      <td className="p-4 text-xs font-bold">{spj.no_spj_resmi || spj.id_spj}</td>
                       <td className="p-4 font-bold">{spj.bidang}</td>
                       <td className="p-4">{spj.proses_gu}</td>
                       <td className="p-4 font-bold text-gray-800">{formatRupiah(spj?.total_kotor || 0)}</td>
@@ -237,7 +237,7 @@ export default function VerifikasiSPJ({ dataSPJ, setDataSPJ, realisasiGU, setRea
           <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="bg-[#0A192F] p-4 text-white flex justify-between items-center">
               <h3 className="font-bold text-lg text-[#D4AF37] flex items-center"><ShieldCheck className="mr-2" /> Input Data Pajak & Validasi SPJ</h3>
-              <span className="bg-white/10 px-3 py-1 rounded text-sm font-mono">{selectedSPJ.id_spj}</span>
+              <span className="bg-white/10 px-3 py-1 rounded text-sm">{selectedSPJ.id_spj}</span>
             </div>
 
             <div className="p-6">

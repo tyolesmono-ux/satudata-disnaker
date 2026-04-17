@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+}

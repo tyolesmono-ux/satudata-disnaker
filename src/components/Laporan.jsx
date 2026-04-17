@@ -239,11 +239,11 @@ export const LaporanCoreTax = ({ realisasiGU }) => {
                   <tr key={i} className="hover:bg-gray-50">
                     <td className="p-3 whitespace-nowrap">{formatTanggal(r.tanggal_nota)}</td>
                     <td className="p-3">{r.nama_vendor}</td>
-                    <td className="p-3 font-mono text-xs">{r.nik_vendor}</td>
+                    <td className="p-3 text-xs">{r.nik_vendor}</td>
                     <td className="p-3 text-right">{formatRupiah(r.nominal_nota)}</td>
-                    <td className="p-3 text-center font-mono">{r.kop_pajak || '-'}</td>
-                    <td className="p-3 text-center font-mono">{r.kap_pajak || '-'}</td>
-                    <td className="p-3 text-center font-mono">{r.kjs_pajak || '-'}</td>
+                    <td className="p-3 text-center">{r.kop_pajak || '-'}</td>
+                    <td className="p-3 text-center">{r.kap_pajak || '-'}</td>
+                    <td className="p-3 text-center">{r.kjs_pajak || '-'}</td>
                     <td className="p-3 text-right font-bold text-red-600">{formatRupiah(pot)}</td>
                   </tr>
                 );
@@ -335,15 +335,15 @@ export const LaporanSIMDTH = ({ dataSPJ }) => {
                 <tr key={i} className="hover:bg-gray-50">
                   <td className="p-3">
                     <div className="font-bold text-xs">{r.no_resmi}</div>
-                    <div className="text-[10px] text-gray-500 font-mono">{r.id_spj}</div>
+                    <div className="text-[10px] text-gray-500">{r.id_spj}</div>
                   </td>
                   <td className="p-3">{r.bidang}</td>
                   <td className="p-3 text-center">
                     <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-bold text-xs">{r.jenis_pajak}</span>
                   </td>
-                  <td className="p-3 text-center font-mono max-w-[120px] truncate" title={r.kode_billing}>{r.kode_billing}</td>
-                  <td className="p-3 text-center font-mono font-bold text-[#0A192F]">{r.ntpn}</td>
-                  <td className="p-3 text-center font-mono text-gray-500">{r.ntb}</td>
+                  <td className="p-3 text-center max-w-[120px] truncate" title={r.kode_billing}>{r.kode_billing}</td>
+                  <td className="p-3 text-center font-bold text-[#0A192F]">{r.ntpn}</td>
+                  <td className="p-3 text-center text-gray-500">{r.ntb}</td>
                   <td className="p-3 text-right font-bold">{formatRupiah(r.nilai_setoran)}</td>
                   <td className="p-3 text-center whitespace-nowrap">{formatTanggal(r.tanggal_bayar)}</td>
                 </tr>

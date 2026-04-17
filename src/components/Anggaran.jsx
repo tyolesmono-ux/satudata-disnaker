@@ -279,7 +279,7 @@ export const RekeningTable = ({ data }) => {
               <tr><td colSpan="5" className="p-10 text-center text-gray-400 italic">Data tidak ditemukan dalam database atau filter saat ini.</td></tr>
             ) : filtered.map((r, i) => (
               <tr key={i} className="hover:bg-blue-50/30 transition-colors group">
-                <td className="p-4 font-mono text-[11px] text-gray-400 group-hover:text-gray-600 transition-colors">{String(r.kode_subkegiatan || '').replace(/^'/, '')}</td>
+                <td className="p-4 text-[11px] text-gray-400 group-hover:text-gray-600 transition-colors">{String(r.kode_subkegiatan || '').replace(/^'/, '')}</td>
                 <td className="p-4 font-bold text-[#0A192F]">{String(r.kode_rekening || '').replace(/^'/, '')}</td>
                 <td className="p-4 text-gray-600 text-xs leading-relaxed">{r.nama_rekening}</td>
                 <td className="p-4 text-right font-black text-[#0A192F] tabular-nums whitespace-nowrap">{formatRupiah(r.pagu)}</td>

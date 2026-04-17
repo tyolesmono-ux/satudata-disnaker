@@ -470,8 +470,8 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
                   return (
                     <tr key={p.id} onClick={() => handleMasalToggle(p.id)} className={`cursor-pointer transition-colors ${isChecked ? 'bg-blue-50/70' : 'hover:bg-gray-50'}`}>
                       <td className="p-3"><input type="checkbox" checked={isChecked} readOnly className="w-4 h-4 accent-[#D4AF37]" /></td>
-                      {isHonorTab && <td className="p-3 font-mono text-xs">{p.nip}</td>}
-                      <td className="p-3 font-mono text-xs">{p.nik}</td>
+                      {isHonorTab && <td className="p-3 text-xs">{p.nip}</td>}
+                      <td className="p-3 text-xs">{p.nik}</td>
                       <td className="p-3 font-bold">{p.nama}</td>
                       {isHonorTab && (
                         <td className="p-3">

@@ -187,7 +187,7 @@ export default function DashboardView({ programs, kegiatans, subKegiatans, reken
               ) : (
                 filteredDashboard.subKegiatanStats.map(sk => (
                   <tr key={sk.kode_subkegiatan} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="p-4 font-mono text-gray-500">{sk.kode_subkegiatan}</td>
+                    <td className="p-4 text-gray-500">{sk.kode_subkegiatan}</td>
                     <td className="p-4 font-medium text-gray-800">{sk.nama_subkegiatan}</td>
                     <td className="p-4 text-right text-gray-600">{formatRupiah(sk.subPagu)}</td>
                     <td className="p-4 text-right font-semibold text-gray-700">{formatRupiah(sk.subRealisasi)}</td>

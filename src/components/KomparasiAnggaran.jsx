@@ -218,11 +218,11 @@ export const KomparasiAnggaran = ({ rekenings, subKegiatans }) => {
                 {dataKomparasi.map((item, idx) => (
                   <tr key={idx} className="hover:bg-gray-50 transition-colors">
                     <td className="p-4 align-top">
-                      <div className="font-mono text-xs text-blue-600 font-bold mb-1">{item.kode_subkegiatan}</div>
+                      <div className="text-xs text-blue-600 font-bold mb-1">{item.kode_subkegiatan}</div>
                       <div className="text-xs text-gray-600 line-clamp-2" title={item.nama_subkegiatan}>{item.nama_subkegiatan}</div>
                     </td>
                     <td className="p-4 align-top">
-                      <div className="font-mono text-xs text-gray-500 mb-1">{item.kode_rekening}</div>
+                      <div className="text-xs text-gray-500 mb-1">{item.kode_rekening}</div>
                       <div className="font-semibold text-[#0A192F]">{item.nama_rekening}</div>
                     </td>
                     <td className="p-4 text-right align-top tabular-nums text-gray-500">
