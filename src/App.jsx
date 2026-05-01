@@ -7,7 +7,7 @@ import { GAS_URL, theme } from './config/constants';
 // Import Modul-modul
 import DashboardView from './components/Dashboard';
 import { FormProgram, FormKegiatan, FormSubKegiatan, FormRekening } from './components/Anggaran';
-import { FormPegawaiASN, FormWPPribadi, FormWPPihakKetiga } from './components/WajibPajak';
+import { FormPegawaiASN, FormWPPribadi, FormWPPihakKetiga, DaftarWajibPajak } from './components/WajibPajak';
 import { FormRealisasiGU, FormCetakSPJ, PrintLayout } from './components/Realisasi';
 import VerifikasiSPJ from './components/VerifikasiSPJ';
 import { LaporanRekapGU, LaporanCoreTax, LaporanSIMDTH } from './components/Laporan';
@@ -202,7 +202,7 @@ export default function App() {
             </button>
             {sidebarOpen && expandedMenu === 'wp' && (
               <div className="mt-1 ml-4 pl-4 border-l border-gray-700 space-y-1">
-                {[{ id: 'wp_asn', label: 'Data Pegawai ASN' }, { id: 'wp_pribadi', label: 'Data WP Pribadi' }, { id: 'wp_pihakketiga', label: 'Data WP Pihak Ketiga' }].map((item) => (
+                {[{ id: 'wp_asn', label: 'Data Pegawai ASN' }, { id: 'wp_pribadi', label: 'Data WP Pribadi' }, { id: 'wp_pihakketiga', label: 'Data WP Pihak Ketiga' }, { id: 'wp_list', label: 'Lihat Semua Data' }].map((item) => (
                   <button key={item.id} onClick={() => setActiveMenu(item.id)} className={`w-full text-left py-2 px-3 rounded-md text-sm ${activeMenu === item.id ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>{item.label}</button>
                 ))}
               </div>
@@ -264,6 +264,7 @@ export default function App() {
             {activeMenu === 'wp_asn' && <FormPegawaiASN onSave={handleSaveData} isLoading={isLoading} />}
             {activeMenu === 'wp_pribadi' && <FormWPPribadi onSave={handleSaveData} isLoading={isLoading} />}
             {activeMenu === 'wp_pihakketiga' && <FormWPPihakKetiga onSave={handleSaveData} isLoading={isLoading} />}
+            {activeMenu === 'wp_list' && <DaftarWajibPajak pegawaiASN={pegawaiASN} wpPribadi={wpPribadi} wpPihakKetiga={wpPihakKetiga} />}
             
             {activeMenu === 'realisasi_gu' && <FormRealisasiGU onSave={handleSaveData} isLoading={isLoading} subKegiatans={subKegiatans} rekenings={rekenings} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} pegawaiASN={pegawaiASN} wpPribadi={wpPribadi} wpPihakKetiga={wpPihakKetiga} showToast={showToast} kop21={kop21} kopUNI={kopUNI} />}
             {activeMenu === 'cetak_spj' && <FormCetakSPJ rekenings={rekenings} subKegiatans={subKegiatans} kegiatans={kegiatans} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} dataSPJ={dataSPJ} setDataSPJ={setDataSPJ} pegawaiASN={pegawaiASN} setPrintData={setPrintData} printedNotes={printedNotes} setPrintedNotes={setPrintedNotes} onUpdate={handleUpdateData} isLoading={isLoading} showToast={showToast} />}

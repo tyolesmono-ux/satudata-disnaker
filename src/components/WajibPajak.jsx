@@ -1,7 +1,8 @@
 // File: src/components/WajibPajak.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FormContainer, InputField, SelectField } from './SharedUI';
+import { Search, Users, Building2, User, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const FormPegawaiASN = ({ onSave, isLoading }) => {
   const [formData, setFormData] = useState({ nip: '', nik: '', nitku: '', npwp: '', nama: '', golongan: '', peran_jabatan: '', kategori_pegawai: 'Internal' });
@@ -83,5 +84,211 @@ export const FormWPPihakKetiga = ({ onSave, isLoading }) => {
       </div>
       <InputField label="NPWP Badan/Usaha" value={formData.npwp} onChange={e => setFormData({...formData, npwp: e.target.value.replace(/[^0-9]/g, '').slice(0, 16)})} required />
     </FormContainer>
+  );
+};
+
+export const DaftarWajibPajak = ({ pegawaiASN = [], wpPribadi = [], wpPihakKetiga = [] }) => {
+  const [activeTab, setActiveTab] = useState('asn');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const filteredData = useMemo(() => {
+    let data = [];
+    if (activeTab === 'asn') data = pegawaiASN;
+    else if (activeTab === 'pribadi') data = wpPribadi;
+    else if (activeTab === 'pihak_ketiga') data = wpPihakKetiga;
+
+    if (!searchTerm) return data;
+
+    const kw = searchTerm.toLowerCase();
+    return data.filter(item => 
+      (item.nama || item.nama_usaha || item.nama_pemilik || '').toLowerCase().includes(kw) ||
+      (item.nip || '').toLowerCase().includes(kw) ||
+      (item.nik || '').toLowerCase().includes(kw) ||
+      (item.npwp || '').toLowerCase().includes(kw)
+    );
+  }, [activeTab, searchTerm, pegawaiASN, wpPribadi, wpPihakKetiga]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchTerm]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const tabs = [
+    { id: 'asn', label: 'Pegawai ASN', icon: <Users size={18} /> },
+    { id: 'pribadi', label: 'WP Pribadi', icon: <User size={18} /> },
+    { id: 'pihak_ketiga', label: 'Pihak Ketiga', icon: <Building2 size={18} /> },
+  ];
+
+  return (
+    <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl border overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="p-6 border-b bg-gray-50/50">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <h2 className="text-xl font-bold text-[#0A192F] flex items-center gap-2">
+            <Users className="text-[#D4AF37]" /> Daftar Wajib Pajak / Penerima
+          </h2>
+          
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="Cari Nama/NIP/NIK/NPWP..." 
+              className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#0A192F] outline-none transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-6 overflow-x-auto pb-2">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); setSearchTerm(''); }}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all whitespace-nowrap ${
+                activeTab === tab.id 
+                ? 'bg-[#0A192F] text-white shadow-lg shadow-[#0A192F]/20' 
+                : 'bg-white text-gray-500 hover:bg-gray-100 border border-gray-200'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                {tab.id === 'asn' ? pegawaiASN.length : tab.id === 'pribadi' ? wpPribadi.length : wpPihakKetiga.length}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-gray-50 border-b">
+            {activeTab === 'asn' && (
+              <tr>
+                <th className="p-4 font-bold text-[#0A192F]">Nama / NIP</th>
+                <th className="p-4 font-bold text-[#0A192F]">NIK / NITKU</th>
+                <th className="p-4 font-bold text-[#0A192F]">Gol / Jabatan</th>
+                <th className="p-4 font-bold text-[#0A192F]">Kategori</th>
+                <th className="p-4 font-bold text-[#0A192F]">NPWP</th>
+              </tr>
+            )}
+            {activeTab === 'pribadi' && (
+              <tr>
+                <th className="p-4 font-bold text-[#0A192F]">Nama Lengkap</th>
+                <th className="p-4 font-bold text-[#0A192F]">NIK</th>
+                <th className="p-4 font-bold text-[#0A192F]">NITKU</th>
+                <th className="p-4 font-bold text-[#0A192F]">NPWP</th>
+              </tr>
+            )}
+            {activeTab === 'pihak_ketiga' && (
+              <tr>
+                <th className="p-4 font-bold text-[#0A192F]">Nama Usaha (CV/PT)</th>
+                <th className="p-4 font-bold text-[#0A192F]">Pemilik / NIK</th>
+                <th className="p-4 font-bold text-[#0A192F]">NITKU</th>
+                <th className="p-4 font-bold text-[#0A192F]">NPWP Badan</th>
+              </tr>
+            )}
+          </thead>
+          <tbody className="divide-y">
+            {paginatedData.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="p-12 text-center text-gray-400 italic">
+                  Belum ada data yang terinput untuk kategori ini.
+                </td>
+              </tr>
+            ) : (
+              paginatedData.map((item, idx) => (
+                <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                  {activeTab === 'asn' && (
+                    <>
+                      <td className="p-4">
+                        <div className="font-bold text-[#0A192F]">{item.nama}</div>
+                        <div className="text-xs text-gray-500 font-mono">{item.nip}</div>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-gray-700 font-medium">{item.nik}</div>
+                        <div className="text-[10px] text-gray-400 font-mono">{item.nitku}</div>
+                      </td>
+                      <td className="p-4">
+                        <div className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded text-[10px] font-bold mr-2">Gol. {item.golongan}</div>
+                        <span className="text-gray-600">{item.peran_jabatan}</span>
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${item.kategori_pegawai === 'Internal' ? 'bg-green-50 text-green-700' : 'bg-purple-50 text-purple-700'}`}>
+                          {item.kategori_pegawai}
+                        </span>
+                      </td>
+                      <td className="p-4 font-mono text-xs text-gray-500">{item.npwp || '-'}</td>
+                    </>
+                  )}
+                  {activeTab === 'pribadi' && (
+                    <>
+                      <td className="p-4 font-bold text-[#0A192F]">{item.nama}</td>
+                      <td className="p-4 text-gray-700 font-medium">{item.nik}</td>
+                      <td className="p-4 font-mono text-xs text-gray-400">{item.nitku}</td>
+                      <td className="p-4 font-mono text-xs text-gray-500">{item.npwp}</td>
+                    </>
+                  )}
+                  {activeTab === 'pihak_ketiga' && (
+                    <>
+                      <td className="p-4 font-bold text-[#0A192F]">{item.nama_usaha}</td>
+                      <td className="p-4">
+                        <div className="text-gray-700 font-medium">{item.nama_pemilik}</div>
+                        <div className="text-[10px] text-gray-400 font-mono">{item.nik}</div>
+                      </td>
+                      <td className="p-4 font-mono text-xs text-gray-400">{item.nitku}</td>
+                      <td className="p-4 font-mono text-xs text-gray-500">{item.npwp}</td>
+                    </>
+                  )}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="p-4 border-t bg-gray-50/30 flex items-center justify-between">
+          <div className="text-sm text-gray-500">
+            Menampilkan <span className="font-bold text-[#0A192F]">{(currentPage - 1) * itemsPerPage + 1}</span> sampai <span className="font-bold text-[#0A192F]">{Math.min(currentPage * itemsPerPage, filteredData.length)}</span> dari <span className="font-bold text-[#0A192F]">{filteredData.length}</span> data
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="p-2 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div className="flex items-center gap-1">
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`w-10 h-10 rounded-lg font-bold transition-all ${
+                    currentPage === i + 1 
+                    ? 'bg-[#0A192F] text-white shadow-md' 
+                    : 'bg-white text-gray-600 hover:bg-gray-100 border'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <button 
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-lg border bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
