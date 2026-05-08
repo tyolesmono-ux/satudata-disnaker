@@ -3,51 +3,164 @@
  */
 
 const SHEET_NAMES = ['Program', 'Kegiatan', 'SubKegiatan', 'Rekening', 'PegawaiASN', 'WPPribadi', 'WPPihakKetiga', 'RealisasiGU', 'DataSPJ', 'KOP21', 'KOPUNI'];
+const FOLDER_ID = '1majeQxu3-VGaTaV2afxXS-Dp4-4DV0yq';
+const JWT_SECRET = 'SatudataDisnakerSecret2026!@#'; // Jangan ubah setelah dipakai
+
+// ==========================================
+// FUNGSI SETUP (JALANKAN SEKALI SAJA DI EDITOR GAS)
+// ==========================================
+function setupAdminUser() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+  if (!sheet) {
+    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet('Users');
+    sheet.appendRow(['username', 'password_hash', 'role', 'nama_lengkap']);
+  }
+  var hash = hashPassword("admin123");
+  sheet.appendRow(['admin', hash, 'super_admin', 'Administrator Utama']);
+  Logger.log("User admin berhasil dibuat. Password: admin123");
+}
+
+// FUNGSI UNTUK MENAMBAH USER BARU (Jalankan dari Editor GAS)
+function addNewUser() {
+  // GANTI DATA DI BAWAH INI SESUAI KEINGINAN
+  var username = "operator1";
+  var password = "password123";
+  var role     = "operator"; // pilihan: super_admin, admin, operator, kepala_bidang
+  var nama     = "Operator Lapangan";
+  
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+  var hash = hashPassword(password);
+  sheet.appendRow([username, hash, role, nama]);
+  Logger.log("User " + username + " berhasil ditambahkan!");
+}
+
+// ==========================================
+// UTILS AUTENTIKASI (JWT & HASH)
+// ==========================================
+function hashPassword(password) {
+  var rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password);
+  var txtHash = '';
+  for (var i = 0; i < rawHash.length; i++) {
+    var hashVal = rawHash[i];
+    if (hashVal < 0) hashVal += 256;
+    if (hashVal.toString(16).length == 1) txtHash += '0';
+    txtHash += hashVal.toString(16);
+  }
+  return txtHash;
+}
+
+function generateJWT(user) {
+  var header = Utilities.base64EncodeWebSafe(JSON.stringify({alg: "HS256", typ: "JWT"}));
+  var payload = Utilities.base64EncodeWebSafe(JSON.stringify({
+    username: user.username,
+    role: user.role,
+    nama_lengkap: user.nama_lengkap,
+    exp: Date.now() + (1000 * 60 * 60 * 24)
+  }));
+  var signature = Utilities.computeHmacSha256Signature(header + "." + payload, JWT_SECRET);
+  return header + "." + payload + "." + Utilities.base64EncodeWebSafe(signature);
+}
+
+function verifyJWT(token) {
+  if (!token) return false;
+  try {
+    var parts = token.split('.');
+    if (parts.length !== 3) return false;
+    var signature = Utilities.computeHmacSha256Signature(parts[0] + "." + parts[1], JWT_SECRET);
+    if (Utilities.base64EncodeWebSafe(signature) === parts[2]) {
+      var payload = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[1])).getDataAsString());
+      if (payload.exp > Date.now()) return payload;
+    }
+  } catch(e) {}
+  return false;
+}
 
 function doGet(e) {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    // Validasi Secret Token
-    const SECRET_KEY = PropertiesService.getScriptProperties().getProperty('API_SECRET');
-    if (e.parameter.secret !== SECRET_KEY) {
-      return createJsonResponse({ status: 'error', message: 'Unauthorized: Invalid Secret Token' });
-    }
+  return createJsonResponse({ status: 'error', message: 'Endpoint doGet kini dibatasi. Gunakan POST untuk akses data.' });
+}
 
-    const action = e.parameter.action;
-    if (action === 'getAllData') {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      // Perbaikan Header Otomatis untuk RealisasiGU jika diperlukan
-      const sheet = ss.getSheetByName('RealisasiGU');
-      if (sheet) {
-        const currentHeaders = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0];
-        if (currentHeaders.length > 0 && (currentHeaders.indexOf('status_spj') === -1 || currentHeaders.indexOf('timestamp') < 19)) {
-          setHeaders(sheet, 'RealisasiGU');
+function doPost(e) {
+  try {
+    const requestData = JSON.parse(e.postData.contents);
+    const action = requestData.action;
+
+    // 1. ACTION LOGIN (Public)
+    if (action === 'login') {
+      var username = requestData.payload.username;
+      var password = requestData.payload.password;
+      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+      if (!sheet) return createJsonResponse({ status: 'error', message: 'Tabel Users tidak ditemukan' });
+      var data = sheet.getDataRange().getValues();
+      var headers = data[0];
+      var userIdx = headers.indexOf('username');
+      var passIdx = headers.indexOf('password_hash');
+      var inputHash = hashPassword(password);
+      for (var i = 1; i < data.length; i++) {
+        if (data[i][userIdx] === username && data[i][passIdx] === inputHash) {
+          var userObj = { username: data[i][userIdx], role: data[i][headers.indexOf('role')], nama_lengkap: data[i][headers.indexOf('nama_lengkap')] };
+          return createJsonResponse({ status: 'success', data: { token: generateJWT(userObj), user: userObj } });
         }
       }
+      return createJsonResponse({ status: 'error', message: 'Username atau password salah.' });
+    }
 
+    // 2. VERIFIKASI TOKEN JWT UNTUK SEMUA ACTION LAINNYA
+    const user = verifyJWT(requestData.token);
+    if (!user) {
+      return createJsonResponse({ status: 'error', message: 'Unauthorized: Sesi berakhir, silakan login kembali.' });
+    }
+
+    // 3. ACTION MANAGEMENT USER (Hanya Super Admin)
+    if (action === 'getUsers' || action === 'addUser' || action === 'deleteUser') {
+      if (user.role !== 'super_admin') return createJsonResponse({ status: 'error', message: 'Akses Ditolak: Hanya Super Admin yang boleh mengelola user.' });
+      
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var sheet = ss.getSheetByName('Users');
+      
+      if (action === 'getUsers') {
+        var data = sheet.getDataRange().getValues();
+        var headers = data[0];
+        var users = [];
+        for (var i = 1; i < data.length; i++) {
+          users.push({
+            username: data[i][headers.indexOf('username')],
+            role: data[i][headers.indexOf('role')],
+            nama_lengkap: data[i][headers.indexOf('nama_lengkap')]
+          });
+        }
+        return createJsonResponse({ status: 'success', data: users });
+      }
+
+      if (action === 'addUser') {
+        var p = requestData.payload;
+        var hash = hashPassword(p.password);
+        sheet.appendRow([p.username, hash, p.role, p.nama_lengkap]);
+        return createJsonResponse({ status: 'success', message: 'User berhasil ditambahkan' });
+      }
+
+      if (action === 'deleteUser') {
+        var usernameToDelete = requestData.payload.username;
+        if (usernameToDelete === 'admin') return createJsonResponse({ status: 'error', message: 'User admin utama tidak boleh dihapus' });
+        var data = sheet.getDataRange().getValues();
+        for (var i = 1; i < data.length; i++) {
+          if (data[i][0] === usernameToDelete) {
+            sheet.deleteRow(i + 1);
+            return createJsonResponse({ status: 'success', message: 'User berhasil dihapus' });
+          }
+        }
+        return createJsonResponse({ status: 'error', message: 'User tidak ditemukan' });
+      }
+    }
+
+    // 4. ACTION GET ALL DATA (Pindahan dari doGet)
+    if (action === 'getAllData') {
       const data = {};
       SHEET_NAMES.forEach(sheetName => {
         data[sheetName.toLowerCase()] = getSheetData(sheetName);
       });
       return createJsonResponse({ status: 'success', data: data });
     }
-    return createJsonResponse({ status: 'error', message: 'Action tidak ditemukan' });
-  } catch (error) {
-    return createJsonResponse({ status: 'error', message: error.message });
-  }
-}
 
-function doPost(e) {
-  try {
-    const requestData = JSON.parse(e.postData.contents);
-    
-    // Validasi Secret Token
-    const SECRET_KEY = PropertiesService.getScriptProperties().getProperty('API_SECRET');
-    if (requestData.secret !== SECRET_KEY) {
-      return createJsonResponse({ status: 'error', message: 'Unauthorized: Invalid Secret Token' });
-    }
-
-    const action = requestData.action;
     const sheetName = requestData.sheet;
     const payload = requestData.payload;
     
@@ -153,6 +266,8 @@ function doPost(e) {
     // IMPORT KERTAS KERJA ANGGARAN (Excel .xlsx)
     // ===============================================
     if (action === 'import_kertas_kerja') {
+      if (user.role !== 'super_admin') return createJsonResponse({ status: 'error', message: 'Akses Ditolak: Hanya Super Admin yang boleh melakukan import anggaran.' });
+      
       const ss = SpreadsheetApp.getActiveSpreadsheet();
       let sheet = ss.getSheetByName('Rekening');
       if (!sheet) {

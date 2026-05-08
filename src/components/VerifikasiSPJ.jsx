@@ -3,7 +3,7 @@ import { InputField, SelectField } from './SharedUI';
 import { GAS_URL } from '../config/constants';
 import { fetchWithTimeout } from '../utils/api';
 import { formatRupiah } from '../utils/helpers';
-import { Printer, ShieldCheck, Lock } from 'lucide-react';
+import { Printer, ShieldCheck, Lock, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 export default function VerifikasiSPJ() {
@@ -226,11 +226,11 @@ export default function VerifikasiSPJ() {
                         <button onClick={() => handleCetak(spj)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A192F] text-white hover:bg-[#122442] rounded-md transition-all hover-scale text-xs font-bold" title="Cetak SPJ"><Printer size={14} /> Cetak</button>
                         <button
                           onClick={() => handleInputPajak(spj)}
-                          disabled={isPajakDone}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all duration-300 hover-scale text-xs font-bold ${isPajakDone ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed' : 'bg-[#D4AF37] text-white hover:bg-[#b8952b]'}`}
-                          title={isPajakDone ? 'Pajak sudah diinput' : 'Update Billing/NTPN Pajak'}
+                          disabled={isPajakDone || user?.role === 'kepala_bidang'}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all duration-300 hover-scale text-xs font-bold ${isPajakDone || user?.role === 'kepala_bidang' ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed' : 'bg-[#D4AF37] text-white hover:bg-[#b8952b]'}`}
+                          title={user?.role === 'kepala_bidang' ? 'Akses Terbatas' : (isPajakDone ? 'Pajak sudah diinput' : 'Update Billing/NTPN Pajak')}
                         >
-                          {isPajakDone ? <><Lock size={12} /> Terkunci</> : 'Pajak'}
+                          {user?.role === 'kepala_bidang' ? <><Lock size={12} /> View</> : (isPajakDone ? <><Lock size={12} /> Terkunci</> : 'Pajak')}
                         </button>
                       </td>
                     </tr>
@@ -273,15 +273,17 @@ export default function VerifikasiSPJ() {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t">
-                <button type="button" disabled={isSubmittingPajak} onClick={() => setShowPajakModal(false)} className="px-6 py-2.5 border rounded-lg hover:bg-gray-50 transition-colors font-semibold disabled:opacity-50">Batal</button>
-                <button type="button" disabled={isSubmittingPajak} onClick={savePajak} className={`px-8 py-2.5 bg-[#0A192F] text-[#D4AF37] rounded-lg font-bold shadow-lg hover:bg-[#122442] hover:-translate-y-0.5 transition-all disabled:opacity-50 ${isSubmittingPajak ? 'cursor-not-allowed' : ''}`}>
-                  {isSubmittingPajak ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-4 h-4 border-2 border-[#D4AF37]/30 border-t-[#D4AF37] rounded-full animate-spin"></span>
-                      Memproses...
-                    </span>
-                  ) : 'Simpan & Validasi SPJ'}
-                </button>
+                <button type="button" disabled={isSubmittingPajak} onClick={() => setShowPajakModal(false)} className="px-6 py-2.5 border rounded-lg hover:bg-gray-50 transition-colors font-semibold disabled:opacity-50">Batal / Tutup</button>
+                {user?.role !== 'kepala_bidang' && (
+                  <button type="button" disabled={isSubmittingPajak} onClick={savePajak} className={`px-8 py-2.5 bg-[#0A192F] text-[#D4AF37] rounded-lg font-bold shadow-lg hover:bg-[#122442] hover:-translate-y-0.5 transition-all disabled:opacity-50 ${isSubmittingPajak ? 'cursor-not-allowed' : ''}`}>
+                    {isSubmittingPajak ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-4 h-4 border-2 border-[#D4AF37]/30 border-t-[#D4AF37] rounded-full animate-spin"></span>
+                        Memproses...
+                      </span>
+                    ) : 'Simpan & Validasi SPJ'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

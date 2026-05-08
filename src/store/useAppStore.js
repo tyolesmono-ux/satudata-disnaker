@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { GAS_URL } from '../config/constants';
 import { fetchWithTimeout } from '../utils/api';
+import { EntitySchemas } from '../utils/schemas';
 
 export const useAppStore = create((set, get) => ({
   // --- DATA STATES ---
@@ -17,7 +18,6 @@ export const useAppStore = create((set, get) => ({
   kopUNI: [],
   
   // --- UI STATES ---
-  activeMenu: 'dashboard',
   sidebarOpen: true,
   expandedMenu: 'realisasi',
   toast: { show: false, message: '', type: 'success' },
@@ -26,8 +26,12 @@ export const useAppStore = create((set, get) => ({
   printData: null,
   printedNotes: [],
 
+  // --- AUTH STATES ---
+  token: localStorage.getItem('satuData_token') || null,
+  user: JSON.parse(localStorage.getItem('satuData_user')) || null,
+  appUsers: [],
+
   // --- UI ACTIONS ---
-  setActiveMenu: (menu) => set({ activeMenu: menu }),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   setExpandedMenu: (menu) => set({ expandedMenu: menu }),
   setPrintData: (data) => set({ printData: data }),
@@ -39,11 +43,106 @@ export const useAppStore = create((set, get) => ({
   },
 
   // --- DATA ACTIONS ---
+  login: async (username, password) => {
+    set({ modal: { show: true, status: 'loading', message: 'Sedang verifikasi login...' } });
+    try {
+      const response = await fetchWithTimeout(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'login', payload: { username, password } }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        const { token, user } = result.data;
+        localStorage.setItem('satuData_token', token);
+        localStorage.setItem('satuData_user', JSON.stringify(user));
+        set({ token, user, modal: { show: false, status: 'loading', message: '' } });
+        return true;
+      } else {
+        set({ modal: { show: true, status: 'error', message: result.message || 'Login gagal.' } });
+        return false;
+      }
+    } catch (err) {
+      set({ modal: { show: true, status: 'error', message: 'Terjadi kesalahan jaringan.' } });
+      return false;
+    }
+  },
+
+  logout: () => {
+    localStorage.removeItem('satuData_token');
+    localStorage.removeItem('satuData_user');
+    set({ token: null, user: null, appUsers: [] });
+  },
+
+  // --- USER MANAGEMENT ACTIONS ---
+  fetchUsers: async () => {
+    const token = get().token;
+    if (!token) return;
+    try {
+      const response = await fetchWithTimeout(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'getUsers', token }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+      const result = await response.json();
+      if (result.status === 'success') set({ appUsers: result.data });
+    } catch (err) { console.error('Gagal fetch users', err); }
+  },
+
+  addUser: async (userData) => {
+    set({ modal: { show: true, status: 'loading', message: 'Menambahkan user...' } });
+    try {
+      const token = get().token;
+      const response = await fetchWithTimeout(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'addUser', payload: userData, token }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        get().showToast('User berhasil ditambahkan', 'success');
+        get().fetchUsers();
+        set({ modal: { show: false, status: 'loading', message: '' } });
+        return true;
+      }
+      set({ modal: { show: true, status: 'error', message: result.message } });
+    } catch (err) { set({ modal: { show: true, status: 'error', message: 'Koneksi gagal' } }); }
+    return false;
+  },
+
+  deleteUser: async (username) => {
+    if (!confirm(`Hapus user ${username}?`)) return;
+    set({ modal: { show: true, status: 'loading', message: 'Menghapus user...' } });
+    try {
+      const token = get().token;
+      const response = await fetchWithTimeout(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'deleteUser', payload: { username }, token }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        get().showToast('User berhasil dihapus', 'success');
+        get().fetchUsers();
+        set({ modal: { show: false, status: 'loading', message: '' } });
+      } else {
+        set({ modal: { show: true, status: 'error', message: result.message } });
+      }
+    } catch (err) { set({ modal: { show: true, status: 'error', message: 'Koneksi gagal' } }); }
+  },
+
   fetchAllData: async () => {
     if (!GAS_URL) return;
+    const token = get().token;
+    if (!token) return; // Harus login dulu
+
     set({ isFetchingData: true });
     try {
-      const response = await fetchWithTimeout(`${GAS_URL}?action=getAllData`);
+      const response = await fetchWithTimeout(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'getAllData', token }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
       const result = await response.json();
       if (result.status === 'success') {
         const formattedRealisasi = (result.data.realisasigu || []).map((r, idx) => {
@@ -77,11 +176,31 @@ export const useAppStore = create((set, get) => ({
   },
 
   handleSaveData: async (sheetName, payload) => {
+    // 1. Validasi dengan Zod jika schema tersedia
+    try {
+      const schema = EntitySchemas[sheetName];
+      if (schema) {
+        const validation = schema.safeParse(payload);
+        if (!validation.success) {
+          // Zod v3 uses .error.issues (not .error.errors)
+          const allErrors = validation.error.issues.map(e => e.message).join('\n• ');
+          set({ modal: { show: true, status: 'error', message: `Validasi Gagal:\n• ${allErrors}` } });
+          return false;
+        }
+      }
+    } catch (zodErr) {
+      console.error('[Zod] Error saat validasi:', zodErr);
+      // Blokir tetap jika terjadi error tak terduga
+      set({ modal: { show: true, status: 'error', message: 'Terjadi kesalahan internal saat validasi data.' } });
+      return false;
+    }
+
     set({ modal: { show: true, status: 'loading', message: `Sedang menyimpan data ${sheetName}...` } });
     try {
+      const token = get().token;
       const response = await fetchWithTimeout(GAS_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'insert', sheet: sheetName, payload }),
+        body: JSON.stringify({ action: 'insert', sheet: sheetName, payload, token }),
         headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
       });
       const result = await response.json();

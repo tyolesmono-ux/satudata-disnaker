@@ -55,7 +55,7 @@ export const FormSubKegiatan = () => {
 };
 
 export const FormRekening = () => {
-  const { handleSaveData, modal, subKegiatans, rekenings, fetchAllData, setModal, showToast } = useAppStore();
+  const { handleSaveData, modal, subKegiatans, rekenings, fetchAllData, setModal, showToast, user } = useAppStore();
   const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({ kode_subkegiatan: '', kode_rekening: '', nama_rekening: '', pagu: '', tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD' });
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -183,9 +183,10 @@ export const FormRekening = () => {
         <InputField label="Nama Rekening (Uraian)" value={formData.nama_rekening} onChange={e => setFormData({...formData, nama_rekening: e.target.value})} required disabled={!formData.kode_subkegiatan} />
       </FormContainer>
 
-      {/* SECTION EXPORT/IMPORT */}
-      <div className="max-w-4xl mx-auto space-y-4">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 bg-[#0A192F] rounded-2xl shadow-xl border border-white/10 relative overflow-hidden group">
+      {/* SECTION EXPORT/IMPORT - Hanya untuk Super Admin */}
+      {user?.role === 'super_admin' && (
+        <div className="max-w-4xl mx-auto space-y-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 bg-[#0A192F] rounded-2xl shadow-xl border border-white/10 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/10 rounded-full -translate-y-16 translate-x-16 blur-3xl group-hover:bg-[#D4AF37]/20 transition-all duration-700"></div>
           <div className="relative">
             <h4 className="text-white font-bold text-lg flex items-center gap-2">
@@ -231,6 +232,7 @@ export const FormRekening = () => {
           </div>
         )}
       </div>
+      )}
 
       <RekeningTable />
     </div>

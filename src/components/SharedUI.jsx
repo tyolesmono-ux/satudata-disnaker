@@ -1,31 +1,48 @@
 // File: src/components/SharedUI.jsx
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Save, ChevronDown } from 'lucide-react';
+import { Save, ChevronDown, Lock } from 'lucide-react';
 import { theme } from '../config/constants';
+import { useAppStore } from '../store/useAppStore';
 
-export const FormContainer = ({ title, children, onSubmit, isSubmitting }) => (
-  <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg border p-8 animate-in slide-in-from-bottom-4 duration-500" style={{ borderColor: theme.borderGray }}>
-    <h2 className="text-xl font-bold mb-8 pb-3 border-b-2 border-gray-100 text-[#0A192F] relative">
-      <span className="absolute bottom-[-2px] left-0 w-24 h-[2px] bg-[#D4AF37] transition-all duration-300"></span>
-      {title}
-    </h2>
-    <form onSubmit={onSubmit} className="space-y-6">
-      <fieldset disabled={isSubmitting}>
-        {children}
-        <div className="pt-6 flex justify-end">
-          <button type="submit" className="flex items-center px-8 py-3 text-white bg-[#0A192F] rounded-lg transition-all duration-300 hover:bg-[#122442] hover:shadow-lg hover:shadow-[#0A192F]/20 hover-scale hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none group focus:outline-none focus:ring-4 focus:ring-[#D4AF37]/30">
-            {isSubmitting ? (
-              <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div> Menyimpan...</>
-            ) : (
-              <><Save size={18} className="mr-2 text-[#D4AF37] transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3" /> Simpan Data</>
-            )}
-          </button>
-        </div>
-      </fieldset>
-    </form>
-  </div>
-);
+export const FormContainer = ({ title, children, onSubmit, isSubmitting }) => {
+  const { user } = useAppStore();
+  const isReadOnly = user?.role === 'kepala_bidang';
+
+  return (
+    <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg border p-8 animate-in slide-in-from-bottom-4 duration-500" style={{ borderColor: theme.borderGray }}>
+      <div className="flex justify-between items-center mb-8 pb-3 border-b-2 border-gray-100 relative">
+        <h2 className="text-xl font-bold text-[#0A192F]">
+          <span className="absolute bottom-[-2px] left-0 w-24 h-[2px] bg-[#D4AF37]"></span>
+          {title}
+        </h2>
+        {isReadOnly && (
+          <div className="flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold border border-amber-200">
+            <Lock size={12} />
+            Mode Lihat Saja
+          </div>
+        )}
+      </div>
+      
+      <form onSubmit={onSubmit} className="space-y-6">
+        <fieldset disabled={isSubmitting || isReadOnly}>
+          {children}
+          {!isReadOnly && (
+            <div className="pt-6 flex justify-end">
+              <button type="submit" className="flex items-center px-8 py-3 text-white bg-[#0A192F] rounded-lg transition-all duration-300 hover:bg-[#122442] hover:shadow-lg hover:shadow-[#0A192F]/20 hover-scale hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none group focus:outline-none focus:ring-4 focus:ring-[#D4AF37]/30">
+                {isSubmitting ? (
+                  <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div> Menyimpan...</>
+                ) : (
+                  <><Save size={18} className="mr-2 text-[#D4AF37] transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3" /> Simpan Data</>
+                )}
+              </button>
+            </div>
+          )}
+        </fieldset>
+      </form>
+    </div>
+  );
+};
 
 export const InputField = ({ label, className, ...props }) => (
   <div className="group">
