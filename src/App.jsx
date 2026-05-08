@@ -3,6 +3,8 @@ import { LayoutDashboard, Wallet, ChevronDown, ChevronRight, Menu, CheckCircle2,
 
 // Import Komfigurasi & Helper
 import { GAS_URL, theme } from './config/constants';
+import { fetchWithTimeout } from './utils/api';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Import Modul-modul
 import DashboardView from './components/Dashboard';
@@ -44,7 +46,7 @@ export default function App() {
     if (!GAS_URL) return;
     setIsFetchingData(true);
     try {
-      const response = await fetch(`${GAS_URL}?action=getAllData`);
+      const response = await fetchWithTimeout(`${GAS_URL}?action=getAllData`);
       const result = await response.json();
       if (result.status === 'success') {
         setPrograms(result.data.program || []);
@@ -89,7 +91,7 @@ export default function App() {
   const handleSaveData = async (sheetName, payload) => {
     setModal({ show: true, status: 'loading', message: `Sedang menyimpan data ${sheetName}...` });
     try {
-      const response = await fetch(GAS_URL, {
+      const response = await fetchWithTimeout(GAS_URL, {
         method: 'POST',
         body: JSON.stringify({ action: 'insert', sheet: sheetName, payload }),
         headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
@@ -129,7 +131,7 @@ export default function App() {
   const handleUpdateData = async (timestamp, updates) => {
     setModal({ show: true, status: 'loading', message: 'Sedang memperbarui data...' });
     try {
-      const response = await fetch(GAS_URL, {
+      const response = await fetchWithTimeout(GAS_URL, {
         method: 'POST',
         body: JSON.stringify({ action: 'update', sheet: 'RealisasiGU', payload: { timestamp: timestamp, updates } }),
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
@@ -250,30 +252,32 @@ export default function App() {
         </header>
 
         <div className="flex-1 overflow-auto p-8">
-          <div key={activeMenu} className="page-transition">
-            {/* ROUTING KONTEN */}
-            {activeMenu === 'dashboard' && <DashboardView programs={programs} kegiatans={kegiatans} subKegiatans={subKegiatans} rekenings={rekenings} realisasiGU={realisasiGU} />}
-            
-            {activeMenu === 'input_program' && <FormProgram onSave={handleSaveData} isLoading={isLoading} />}
-            {activeMenu === 'input_kegiatan' && <FormKegiatan onSave={handleSaveData} isLoading={isLoading} programs={programs} />}
-            {activeMenu === 'input_subkegiatan' && <FormSubKegiatan onSave={handleSaveData} isLoading={isLoading} kegiatans={kegiatans} />}
-            {activeMenu === 'input_rekening' && <FormRekening onSave={handleSaveData} isLoading={isLoading} subKegiatans={subKegiatans} rekenings={rekenings} refreshData={fetchAllData} gasUrl={GAS_URL} setModal={setModal} showToast={showToast} />}
-            
-            {activeMenu === 'komparasi_anggaran' && <KomparasiAnggaran rekenings={rekenings} subKegiatans={subKegiatans} />}
+          <ErrorBoundary>
+            <div key={activeMenu} className="page-transition">
+              {/* ROUTING KONTEN */}
+              {activeMenu === 'dashboard' && <DashboardView programs={programs} kegiatans={kegiatans} subKegiatans={subKegiatans} rekenings={rekenings} realisasiGU={realisasiGU} />}
+              
+              {activeMenu === 'input_program' && <FormProgram onSave={handleSaveData} isLoading={isLoading} />}
+              {activeMenu === 'input_kegiatan' && <FormKegiatan onSave={handleSaveData} isLoading={isLoading} programs={programs} />}
+              {activeMenu === 'input_subkegiatan' && <FormSubKegiatan onSave={handleSaveData} isLoading={isLoading} kegiatans={kegiatans} />}
+              {activeMenu === 'input_rekening' && <FormRekening onSave={handleSaveData} isLoading={isLoading} subKegiatans={subKegiatans} rekenings={rekenings} refreshData={fetchAllData} gasUrl={GAS_URL} setModal={setModal} showToast={showToast} />}
+              
+              {activeMenu === 'komparasi_anggaran' && <KomparasiAnggaran rekenings={rekenings} subKegiatans={subKegiatans} />}
 
-            {activeMenu === 'wp_asn' && <FormPegawaiASN onSave={handleSaveData} isLoading={isLoading} />}
-            {activeMenu === 'wp_pribadi' && <FormWPPribadi onSave={handleSaveData} isLoading={isLoading} />}
-            {activeMenu === 'wp_pihakketiga' && <FormWPPihakKetiga onSave={handleSaveData} isLoading={isLoading} />}
-            {activeMenu === 'wp_list' && <DaftarWajibPajak pegawaiASN={pegawaiASN} wpPribadi={wpPribadi} wpPihakKetiga={wpPihakKetiga} />}
-            
-            {activeMenu === 'realisasi_gu' && <FormRealisasiGU onSave={handleSaveData} isLoading={isLoading} subKegiatans={subKegiatans} rekenings={rekenings} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} pegawaiASN={pegawaiASN} wpPribadi={wpPribadi} wpPihakKetiga={wpPihakKetiga} showToast={showToast} kop21={kop21} kopUNI={kopUNI} />}
-            {activeMenu === 'cetak_spj' && <FormCetakSPJ rekenings={rekenings} subKegiatans={subKegiatans} kegiatans={kegiatans} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} dataSPJ={dataSPJ} setDataSPJ={setDataSPJ} pegawaiASN={pegawaiASN} setPrintData={setPrintData} printedNotes={printedNotes} setPrintedNotes={setPrintedNotes} onUpdate={handleUpdateData} isLoading={isLoading} showToast={showToast} />}
-            {activeMenu === 'verifikasi_spj' && <VerifikasiSPJ dataSPJ={dataSPJ} setDataSPJ={setDataSPJ} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} rekenings={rekenings} subKegiatans={subKegiatans} kegiatans={kegiatans} pegawaiASN={pegawaiASN} setPrintData={setPrintData} showToast={showToast} />}
-            
-            {activeMenu === 'laporan_rekap_gu' && <LaporanRekapGU realisasiGU={realisasiGU} rekenings={rekenings} subKegiatans={subKegiatans} />}
-            {activeMenu === 'laporan_coretax' && <LaporanCoreTax realisasiGU={realisasiGU} />}
-            {activeMenu === 'laporan_simdth' && <LaporanSIMDTH dataSPJ={dataSPJ} />}
-          </div>
+              {activeMenu === 'wp_asn' && <FormPegawaiASN onSave={handleSaveData} isLoading={isLoading} />}
+              {activeMenu === 'wp_pribadi' && <FormWPPribadi onSave={handleSaveData} isLoading={isLoading} />}
+              {activeMenu === 'wp_pihakketiga' && <FormWPPihakKetiga onSave={handleSaveData} isLoading={isLoading} />}
+              {activeMenu === 'wp_list' && <DaftarWajibPajak pegawaiASN={pegawaiASN} wpPribadi={wpPribadi} wpPihakKetiga={wpPihakKetiga} />}
+              
+              {activeMenu === 'realisasi_gu' && <FormRealisasiGU onSave={handleSaveData} isLoading={isLoading} subKegiatans={subKegiatans} rekenings={rekenings} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} pegawaiASN={pegawaiASN} wpPribadi={wpPribadi} wpPihakKetiga={wpPihakKetiga} showToast={showToast} kop21={kop21} kopUNI={kopUNI} />}
+              {activeMenu === 'cetak_spj' && <FormCetakSPJ rekenings={rekenings} subKegiatans={subKegiatans} kegiatans={kegiatans} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} dataSPJ={dataSPJ} setDataSPJ={setDataSPJ} pegawaiASN={pegawaiASN} setPrintData={setPrintData} printedNotes={printedNotes} setPrintedNotes={setPrintedNotes} onUpdate={handleUpdateData} isLoading={isLoading} showToast={showToast} />}
+              {activeMenu === 'verifikasi_spj' && <VerifikasiSPJ dataSPJ={dataSPJ} setDataSPJ={setDataSPJ} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} rekenings={rekenings} subKegiatans={subKegiatans} kegiatans={kegiatans} pegawaiASN={pegawaiASN} setPrintData={setPrintData} showToast={showToast} />}
+              
+              {activeMenu === 'laporan_rekap_gu' && <LaporanRekapGU realisasiGU={realisasiGU} rekenings={rekenings} subKegiatans={subKegiatans} />}
+              {activeMenu === 'laporan_coretax' && <LaporanCoreTax realisasiGU={realisasiGU} />}
+              {activeMenu === 'laporan_simdth' && <LaporanSIMDTH dataSPJ={dataSPJ} />}
+            </div>
+          </ErrorBoundary>
         </div>
 
         {/* MODAL ERROR/LOADING/SUCCESS */}

@@ -6,6 +6,13 @@ const SHEET_NAMES = ['Program', 'Kegiatan', 'SubKegiatan', 'Rekening', 'PegawaiA
 
 function doGet(e) {
   try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    // Validasi Secret Token
+    const SECRET_KEY = PropertiesService.getScriptProperties().getProperty('API_SECRET');
+    if (e.parameter.secret !== SECRET_KEY) {
+      return createJsonResponse({ status: 'error', message: 'Unauthorized: Invalid Secret Token' });
+    }
+
     const action = e.parameter.action;
     if (action === 'getAllData') {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -33,6 +40,13 @@ function doGet(e) {
 function doPost(e) {
   try {
     const requestData = JSON.parse(e.postData.contents);
+    
+    // Validasi Secret Token
+    const SECRET_KEY = PropertiesService.getScriptProperties().getProperty('API_SECRET');
+    if (requestData.secret !== SECRET_KEY) {
+      return createJsonResponse({ status: 'error', message: 'Unauthorized: Invalid Secret Token' });
+    }
+
     const action = requestData.action;
     const sheetName = requestData.sheet;
     const payload = requestData.payload;

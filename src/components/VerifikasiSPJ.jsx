@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { InputField, SelectField } from './SharedUI';
 import { GAS_URL } from '../config/constants';
+import { fetchWithTimeout } from '../utils/api';
 import { formatRupiah } from '../utils/helpers';
 import { Printer, ShieldCheck, Lock } from 'lucide-react';
 
@@ -93,6 +94,9 @@ export default function VerifikasiSPJ({ dataSPJ, setDataSPJ, realisasiGU, setRea
     if (isSubmittingPajak) return; // Guard double-click
     if (!pajakData.tanggal_bayar) return showToast('Tanggal bayar wajib diisi!', 'error');
 
+    const confirmed = window.confirm('Apakah Anda yakin data pajak ini sudah benar? Aksi ini akan mengubah status SPJ menjadi Valid secara permanen.');
+    if (!confirmed) return;
+
     setIsSubmittingPajak(true);
     try {
       const payload = {
@@ -102,7 +106,7 @@ export default function VerifikasiSPJ({ dataSPJ, setDataSPJ, realisasiGU, setRea
           ...pajakData
         }
       };
-      const response = await fetch(GAS_URL, {
+      const response = await fetchWithTimeout(GAS_URL, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
