@@ -1,15 +1,16 @@
-// File: src/components/WajibPajak.jsx
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { FormContainer, InputField, SelectField } from './SharedUI';
 import { Search, Users, Building2, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
 
-export const FormPegawaiASN = ({ onSave, isLoading }) => {
+export const FormPegawaiASN = () => {
+  const { handleSaveData, modal } = useAppStore();
+  const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({ nip: '', nik: '', nitku: '', npwp: '', nama: '', golongan: '', peran_jabatan: '', kategori_pegawai: 'Internal' });
   
   const handleSubmit = async (e) => { 
     e.preventDefault(); 
-    const success = await onSave('PegawaiASN', formData); 
+    const success = await handleSaveData('PegawaiASN', formData); 
     if(success) setFormData({ nip: '', nik: '', nitku: '', npwp: '', nama: '', golongan: '', peran_jabatan: '', kategori_pegawai: 'Internal' }); 
   };
 
@@ -44,12 +45,14 @@ export const FormPegawaiASN = ({ onSave, isLoading }) => {
   );
 };
 
-export const FormWPPribadi = ({ onSave, isLoading }) => {
+export const FormWPPribadi = () => {
+  const { handleSaveData, modal } = useAppStore();
+  const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({ nik: '', nitku: '', npwp: '', nama: '' });
   
   const handleSubmit = async (e) => { 
     e.preventDefault(); 
-    const success = await onSave('WPPribadi', formData); 
+    const success = await handleSaveData('WPPribadi', formData); 
     if(success) setFormData({ nik: '', nitku: '', npwp: '', nama: '' }); 
   };
 
@@ -65,12 +68,14 @@ export const FormWPPribadi = ({ onSave, isLoading }) => {
   );
 };
 
-export const FormWPPihakKetiga = ({ onSave, isLoading }) => {
+export const FormWPPihakKetiga = () => {
+  const { handleSaveData, modal } = useAppStore();
+  const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({ nik: '', nitku: '', npwp: '', nama_pemilik: '', nama_usaha: '' });
   
   const handleSubmit = async (e) => { 
     e.preventDefault(); 
-    const success = await onSave('WPPihakKetiga', formData); 
+    const success = await handleSaveData('WPPihakKetiga', formData); 
     if(success) setFormData({ nik: '', nitku: '', npwp: '', nama_pemilik: '', nama_usaha: '' }); 
   };
 
@@ -87,7 +92,8 @@ export const FormWPPihakKetiga = ({ onSave, isLoading }) => {
   );
 };
 
-export const DaftarWajibPajak = ({ pegawaiASN = [], wpPribadi = [], wpPihakKetiga = [] }) => {
+export const DaftarWajibPajak = () => {
+  const { pegawaiASN, wpPribadi, wpPihakKetiga } = useAppStore();
   const [activeTab, setActiveTab] = useState('asn');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);

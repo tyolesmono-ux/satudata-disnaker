@@ -3,8 +3,10 @@ import { LayoutDashboard } from 'lucide-react';
 import { SelectField } from './SharedUI';
 import { theme } from '../config/constants';
 import { formatRupiah } from '../utils/helpers';
+import { useAppStore } from '../store/useAppStore';
 
-export default function DashboardView({ programs, kegiatans, subKegiatans, rekenings, realisasiGU = [] }) {
+export default function DashboardView() {
+  const { programs, kegiatans, subKegiatans, rekenings, realisasiGU } = useAppStore();
   const [dashTahun, setDashTahun] = useState(new Date().getFullYear().toString());
   const [dashTahap, setDashTahap] = useState('APBD');
   const [filterProgram, setFilterProgram] = useState('');

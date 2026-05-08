@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Download, Filter, ReceiptText, ShieldCheck, FileText } from 'lucide-react';
 import { SelectField } from './SharedUI';
 import { formatRupiah, formatTanggal } from '../utils/helpers';
+import { useAppStore } from '../store/useAppStore';
 
 // Helper Export CSV
 const exportToCSV = (filename, rows) => {
@@ -17,7 +18,8 @@ const exportToCSV = (filename, rows) => {
   document.body.removeChild(link);
 };
 
-export const LaporanRekapGU = ({ realisasiGU, rekenings, subKegiatans }) => {
+export const LaporanRekapGU = () => {
+  const { realisasiGU, rekenings, subKegiatans } = useAppStore();
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear().toString());
   const [filterTahap, setFilterTahap] = useState('APBD');
   const [filterGU, setFilterGU] = useState('GU-01');
@@ -156,7 +158,8 @@ export const LaporanRekapGU = ({ realisasiGU, rekenings, subKegiatans }) => {
   );
 };
 
-export const LaporanCoreTax = ({ realisasiGU }) => {
+export const LaporanCoreTax = () => {
+  const { realisasiGU } = useAppStore();
   const [jenisPajak, setJenisPajak] = useState('BPU'); // BPU, BP21, PPN
 
   const filteredData = useMemo(() => {
@@ -256,7 +259,8 @@ export const LaporanCoreTax = ({ realisasiGU }) => {
   );
 };
 
-export const LaporanSIMDTH = ({ dataSPJ }) => {
+export const LaporanSIMDTH = () => {
+  const { dataSPJ } = useAppStore();
   const tableData = useMemo(() => {
     const list = [];
     const validSPJs = dataSPJ.filter(s => s.status_spj === 'Valid');

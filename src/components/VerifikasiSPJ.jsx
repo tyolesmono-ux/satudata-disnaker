@@ -4,8 +4,15 @@ import { GAS_URL } from '../config/constants';
 import { fetchWithTimeout } from '../utils/api';
 import { formatRupiah } from '../utils/helpers';
 import { Printer, ShieldCheck, Lock } from 'lucide-react';
+import { useAppStore } from '../store/useAppStore';
 
-export default function VerifikasiSPJ({ dataSPJ, setDataSPJ, realisasiGU, setRealisasiGU, rekenings, subKegiatans, kegiatans, pegawaiASN, setPrintData, showToast }) {
+export default function VerifikasiSPJ() {
+  const {
+    dataSPJ, setDataSPJ, realisasiGU, setRealisasiGU,
+    rekenings, subKegiatans, kegiatans, pegawaiASN,
+    setPrintData, showToast
+  } = useAppStore();
+
   const [showPajakModal, setShowPajakModal] = useState(false);
   const [selectedSPJ, setSelectedSPJ] = useState(null);
   const [pajakData, setPajakData] = useState({ tanggal_bayar: new Date().toISOString().split('T')[0] });

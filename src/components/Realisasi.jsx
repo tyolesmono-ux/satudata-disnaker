@@ -4,8 +4,16 @@ import { FormContainer, InputField, SelectField, SearchableSelect } from './Shar
 import { theme, GAS_URL } from '../config/constants';
 import { formatRupiah, formatTanggal, terbilang } from '../utils/helpers';
 import logoSurakarta from '../assets/logo-surakarta.png';
+import { useAppStore } from '../store/useAppStore';
 
-export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, realisasiGU, setRealisasiGU, pegawaiASN, wpPribadi, wpPihakKetiga, showToast, kop21, kopUNI }) => {
+export const FormRealisasiGU = () => {
+  const {
+    subKegiatans, rekenings, realisasiGU, setRealisasiGU,
+    pegawaiASN, wpPribadi, wpPihakKetiga, showToast, kop21, kopUNI,
+    handleSaveData, modal
+  } = useAppStore();
+  
+  const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({
     tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD', bulan_spj: '', proses_gu: 'GU-01',
     kode_subkegiatan: '', kode_rekening: '', tanggal_nota: '', keterangan_nota: '', nik_vendor: '', nama_vendor: '', punya_npwp: false,
@@ -107,7 +115,7 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
     if (Number(formData.nominal_nota) > paguTersedia) return showToast(`Nominal melebihi sisa pagu (${formatRupiah(paguTersedia)})!`, 'error');
 
     const kopData = parseKOP(formData.kategori_pajak, formData.kop_pajak);
-    const success = await onSave('RealisasiGU', { ...formData, ...kopData });
+    const success = await handleSaveData('RealisasiGU', { ...formData, ...kopData });
     if (success) {
       setFormData(prev => ({
         ...prev, nik_vendor: '', nama_vendor: '', nominal_nota: '',
@@ -523,7 +531,14 @@ export const FormRealisasiGU = ({ onSave, isLoading, subKegiatans, rekenings, re
   );
 };
 
-export const FormCetakSPJ = ({ rekenings, subKegiatans, kegiatans, realisasiGU, setRealisasiGU, dataSPJ, setDataSPJ, pegawaiASN, setPrintData, printedNotes, setPrintedNotes, onUpdate, isLoading, showToast }) => {
+export const FormCetakSPJ = () => {
+  const {
+    rekenings, subKegiatans, kegiatans, realisasiGU, setRealisasiGU,
+    dataSPJ, setDataSPJ, pegawaiASN, setPrintData,
+    printedNotes, setPrintedNotes, handleUpdateData, modal, showToast
+  } = useAppStore();
+
+  const isLoading = modal.show && modal.status === 'loading';
   const [filter, setFilter] = useState({ tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD', bulan_spj: '', proses_gu: 'GU-01', kode_subkegiatan: '', kode_rekening: '' });
   const [selectedNotes, setSelectedNotes] = useState([]);
   const [showModalBidang, setShowModalBidang] = useState(false);

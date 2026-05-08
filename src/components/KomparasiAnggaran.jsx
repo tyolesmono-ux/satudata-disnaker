@@ -3,8 +3,10 @@ import { BarChart, TrendingUp, TrendingDown, ArrowRightLeft, Info, HelpCircle } 
 import { SelectField } from './SharedUI';
 import { formatRupiah } from '../utils/helpers';
 import { theme } from '../config/constants';
+import { useAppStore } from '../store/useAppStore';
 
-export const KomparasiAnggaran = ({ rekenings, subKegiatans }) => {
+export const KomparasiAnggaran = () => {
+  const { rekenings, subKegiatans } = useAppStore();
   const currentYear = new Date().getFullYear().toString();
   const [tahunAnggaran, setTahunAnggaran] = useState(new Date().getFullYear().toString());
   const [tahapAwal, setTahapAwal] = useState('APBD');

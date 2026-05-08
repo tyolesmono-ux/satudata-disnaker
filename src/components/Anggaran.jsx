@@ -1,16 +1,17 @@
-// File: src/components/Anggaran.jsx
-
 import React, { useState, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, Upload, FileSpreadsheet, Table, Search, Trash2 } from 'lucide-react';
 import { FormContainer, InputField, SelectField } from './SharedUI';
 import { theme } from '../config/constants';
 import { formatRupiah } from '../utils/helpers';
+import { useAppStore } from '../store/useAppStore';
+import { GAS_URL } from '../config/constants';
 
-
-export const FormProgram = ({ onSave, isLoading }) => {
+export const FormProgram = () => {
+  const { handleSaveData, modal } = useAppStore();
+  const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({ kode_program: '', nama_program: '' });
-  const handleSubmit = async (e) => { e.preventDefault(); const success = await onSave('Program', formData); if(success) setFormData({ kode_program: '', nama_program: '' }); };
+  const handleSubmit = async (e) => { e.preventDefault(); const success = await handleSaveData('Program', formData); if(success) setFormData({ kode_program: '', nama_program: '' }); };
   return (
     <FormContainer title="Input Data Program" onSubmit={handleSubmit} isSubmitting={isLoading}>
       <InputField label="Kode Program" value={formData.kode_program} onChange={e => setFormData({...formData, kode_program: e.target.value})} placeholder="Contoh: 1.01" required />
@@ -19,9 +20,11 @@ export const FormProgram = ({ onSave, isLoading }) => {
   );
 };
 
-export const FormKegiatan = ({ onSave, isLoading, programs }) => {
+export const FormKegiatan = () => {
+  const { handleSaveData, modal, programs } = useAppStore();
+  const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({ kode_program: '', kode_kegiatan: '', nama_kegiatan: '' });
-  const handleSubmit = async (e) => { e.preventDefault(); const success = await onSave('Kegiatan', formData); if(success) setFormData({ ...formData, kode_kegiatan: '', nama_kegiatan: '' }); };
+  const handleSubmit = async (e) => { e.preventDefault(); const success = await handleSaveData('Kegiatan', formData); if(success) setFormData({ ...formData, kode_kegiatan: '', nama_kegiatan: '' }); };
   return (
     <FormContainer title="Input Data Kegiatan" onSubmit={handleSubmit} isSubmitting={isLoading}>
       <SelectField label="Pilih Program" value={formData.kode_program} onChange={e => setFormData({...formData, kode_program: e.target.value})} required>
@@ -34,9 +37,11 @@ export const FormKegiatan = ({ onSave, isLoading, programs }) => {
   );
 };
 
-export const FormSubKegiatan = ({ onSave, isLoading, kegiatans }) => {
+export const FormSubKegiatan = () => {
+  const { handleSaveData, modal, kegiatans } = useAppStore();
+  const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({ kode_kegiatan: '', kode_subkegiatan: '', nama_subkegiatan: '' });
-  const handleSubmit = async (e) => { e.preventDefault(); const success = await onSave('SubKegiatan', formData); if(success) setFormData({ ...formData, kode_subkegiatan: '', nama_subkegiatan: '' }); };
+  const handleSubmit = async (e) => { e.preventDefault(); const success = await handleSaveData('SubKegiatan', formData); if(success) setFormData({ ...formData, kode_subkegiatan: '', nama_subkegiatan: '' }); };
   return (
     <FormContainer title="Input Data Sub Kegiatan" onSubmit={handleSubmit} isSubmitting={isLoading}>
       <SelectField label="Pilih Kegiatan" value={formData.kode_kegiatan} onChange={e => setFormData({...formData, kode_kegiatan: e.target.value})} required>
@@ -49,7 +54,9 @@ export const FormSubKegiatan = ({ onSave, isLoading, kegiatans }) => {
   );
 };
 
-export const FormRekening = ({ onSave, isLoading, subKegiatans, rekenings, refreshData, gasUrl, setModal, showToast }) => {
+export const FormRekening = () => {
+  const { handleSaveData, modal, subKegiatans, rekenings, fetchAllData, setModal, showToast } = useAppStore();
+  const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({ kode_subkegiatan: '', kode_rekening: '', nama_rekening: '', pagu: '', tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD' });
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
@@ -67,7 +74,7 @@ export const FormRekening = ({ onSave, isLoading, subKegiatans, rekenings, refre
     return masterRekening.filter(item => String(item.kode_rekening).toLowerCase().includes(kw) || String(item.nama_rekening).toLowerCase().includes(kw));
   }, [formData.kode_rekening, masterRekening]);
 
-  const handleSubmit = async (e) => { e.preventDefault(); const success = await onSave('Rekening', formData); if(success) setFormData({ ...formData, kode_rekening: '', nama_rekening: '', pagu: '' }); };
+  const handleSubmit = async (e) => { e.preventDefault(); const success = await handleSaveData('Rekening', formData); if(success) setFormData({ ...formData, kode_rekening: '', nama_rekening: '', pagu: '' }); };
 
   const handleExportExcel = () => {
     if (!rekenings || rekenings.length === 0) return showToast('Tidak ada data untuk diexport', 'error');
@@ -117,7 +124,7 @@ export const FormRekening = ({ onSave, isLoading, subKegiatans, rekenings, refre
           const end = Math.min(start + chunkSize, totalItems);
           const chunk = jsonData.slice(start, end);
 
-          const response = await fetch(gasUrl, {
+          const response = await fetch(GAS_URL, {
             method: 'POST',
             body: JSON.stringify({ action: 'import_kertas_kerja', payload: { items: chunk } }),
             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
@@ -131,7 +138,7 @@ export const FormRekening = ({ onSave, isLoading, subKegiatans, rekenings, refre
         }
 
         setModal({ show: true, status: 'success', message: `Berhasil mengimpor ${successCount} data anggaran secara bertahap!` });
-        if (refreshData) refreshData();
+        fetchAllData();
       } catch (error) {
         setModal({ show: true, status: 'error', message: `Gagal import: ${error.message}` });
       } finally {
@@ -225,12 +232,14 @@ export const FormRekening = ({ onSave, isLoading, subKegiatans, rekenings, refre
         )}
       </div>
 
-      <RekeningTable data={rekenings} />
+      <RekeningTable />
     </div>
   );
 };
 
-export const RekeningTable = ({ data }) => {
+export const RekeningTable = () => {
+  const { rekenings } = useAppStore();
+  const data = rekenings;
   const [searchTerm, setSearchTerm] = useState('');
   
   const filtered = useMemo(() => {

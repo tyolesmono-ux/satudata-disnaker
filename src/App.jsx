@@ -16,142 +16,29 @@ import { LaporanRekapGU, LaporanCoreTax, LaporanSIMDTH } from './components/Lapo
 import { KomparasiAnggaran } from './components/KomparasiAnggaran';
 import logo from './assets/satudata-logo.png';
 
+import { useAppStore } from './store/useAppStore';
+
 export default function App() {
-  const [activeMenu, setActiveMenu] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  
-  const [expandedMenu, setExpandedMenu] = useState('realisasi'); 
-  
-  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-  const [modal, setModal] = useState({ show: false, status: 'loading', message: '' });
+  const {
+    activeMenu, setActiveMenu,
+    sidebarOpen, setSidebarOpen,
+    expandedMenu, setExpandedMenu,
+    toast, modal, isFetchingData,
+    printData, setPrintData,
+    programs, kegiatans, subKegiatans, rekenings,
+    pegawaiASN, wpPribadi, wpPihakKetiga,
+    realisasiGU, setRealisasiGU, dataSPJ, setDataSPJ, kop21, kopUNI,
+    printedNotes, setPrintedNotes,
+    fetchAllData, handleSaveData, handleUpdateData, setModal, showToast
+  } = useAppStore();
 
-  const [programs, setPrograms] = useState([]);
-  const [kegiatans, setKegiatans] = useState([]);
-  const [subKegiatans, setSubKegiatans] = useState([]);
-  const [rekenings, setRekenings] = useState([]);
-  const [pegawaiASN, setPegawaiASN] = useState([]);
-  const [wpPribadi, setWPPribadi] = useState([]);
-  const [wpPihakKetiga, setWPPihakKetiga] = useState([]);
-  const [realisasiGU, setRealisasiGU] = useState([]); 
-  const [dataSPJ, setDataSPJ] = useState([]);
-  const [kop21, setKop21] = useState([]);
-  const [kopUNI, setKopUNI] = useState([]);
-
-  const [printData, setPrintData] = useState(null);
   const isLoading = modal.show && modal.status === 'loading';
-  const [isFetchingData, setIsFetchingData] = useState(false);
-  const [printedNotes, setPrintedNotes] = useState([]);
-
-  const fetchAllData = async () => {
-    if (!GAS_URL) return;
-    setIsFetchingData(true);
-    try {
-      const response = await fetchWithTimeout(`${GAS_URL}?action=getAllData`);
-      const result = await response.json();
-      if (result.status === 'success') {
-        setPrograms(result.data.program || []);
-        setKegiatans(result.data.kegiatan || []);
-        setSubKegiatans(result.data.subkegiatan || []);
-        setRekenings(result.data.rekening || []);
-        setPegawaiASN(result.data.pegawaiasn || []);
-        setWPPribadi(result.data.wppribadi || []);
-        setWPPihakKetiga(result.data.wppihakketiga || []);
-        setDataSPJ(result.data.dataspj || []);
-        setKop21(result.data.kop21 || []);
-        setKopUNI(result.data.kopuni || []);
-        
-        const formattedRealisasi = (result.data.realisasigu || []).map((r, idx) => {
-          const uniqueId = r.timestamp ? String(r.timestamp) : `temp_${idx}_${Date.now()}`;
-          return { 
-            ...r, 
-            id_nota: r.id_nota || uniqueId,
-            timestamp: uniqueId
-          };
-        });
-        setRealisasiGU(formattedRealisasi);
-      }
-    } catch (error) {
-      showToast('Gagal menarik data dari database.', 'error');
-    } finally {
-      setIsFetchingData(false);
-    }
-  };
 
   useEffect(() => {
     const savedPrinted = localStorage.getItem('satuData_printedNotes');
     if (savedPrinted) setPrintedNotes(JSON.parse(savedPrinted));
     fetchAllData();
   }, []);
-
-  const showToast = (message, type = 'success') => {
-    setToast({ show: true, message, type });
-    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
-  };
-
-  const handleSaveData = async (sheetName, payload) => {
-    setModal({ show: true, status: 'loading', message: `Sedang menyimpan data ${sheetName}...` });
-    try {
-      const response = await fetchWithTimeout(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'insert', sheet: sheetName, payload }),
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
-      });
-      const result = await response.json();
-      if (result.status !== 'success') throw new Error(result.message);
-      
-      if (sheetName === 'Program') setPrograms(prev => [...prev, payload]);
-      if (sheetName === 'Kegiatan') setKegiatans(prev => [...prev, payload]);
-      if (sheetName === 'SubKegiatan') setSubKegiatans(prev => [...prev, payload]);
-      if (sheetName === 'Rekening') setRekenings(prev => [...prev, payload]);
-      if (sheetName === 'PegawaiASN') setPegawaiASN(prev => [...prev, payload]);
-      if (sheetName === 'WPPribadi') setWPPribadi(prev => [...prev, payload]);
-      if (sheetName === 'WPPihakKetiga') setWPPihakKetiga(prev => [...prev, payload]);
-      if (sheetName === 'RealisasiGU') {
-        // Gunakan id_nota & timestamp ASLI dari backend agar konsisten dengan sheet
-        const realIdNota = result.id_nota || ('temp_' + Date.now());
-        const realTimestamp = result.timestamp || realIdNota;
-        setRealisasiGU(prev => [...prev, { 
-          ...payload, 
-          id_nota: realIdNota, 
-          timestamp: realTimestamp,
-          status_nota: 'Draft',
-          status_spj: 'Draft',
-          id_spj: ''
-        }]);
-      }
-
-      setModal({ show: true, status: 'success', message: `Data ${sheetName} berhasil disimpan!` });
-      return true; 
-    } catch (error) {
-      setModal({ show: true, status: 'error', message: `Gagal: ${error.message}` });
-      return false; 
-    }
-  };
-
-  const handleUpdateData = async (timestamp, updates) => {
-    setModal({ show: true, status: 'loading', message: 'Sedang memperbarui data...' });
-    try {
-      const response = await fetchWithTimeout(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'update', sheet: 'RealisasiGU', payload: { timestamp: timestamp, updates } }),
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-      });
-      const result = await response.json();
-      if (result.status !== 'success') throw new Error(result.message);
-
-      // Update state lokal — support single or array of timestamps
-      const tsArray = Array.isArray(timestamp) ? timestamp.map(String) : [String(timestamp)];
-      setRealisasiGU(prev => prev.map(r => 
-        tsArray.includes(String(r.timestamp)) ? { ...r, ...updates } : r
-      ));
-
-      setModal({ show: true, status: 'success', message: result.message });
-      return true;
-    } catch (error) {
-      setModal({ show: true, status: 'error', message: `Gagal: ${error.message}` });
-      return false;
-    }
-  };
 
   // Jika sedang mencetak SPJ, tampilkan Overlay Print
   if (printData) return <PrintLayout data={printData} onBack={() => setPrintData(null)} />;
@@ -254,28 +141,28 @@ export default function App() {
         <div className="flex-1 overflow-auto p-8">
           <ErrorBoundary>
             <div key={activeMenu} className="page-transition">
-              {/* ROUTING KONTEN */}
-              {activeMenu === 'dashboard' && <DashboardView programs={programs} kegiatans={kegiatans} subKegiatans={subKegiatans} rekenings={rekenings} realisasiGU={realisasiGU} />}
+              {/* CONTENT ROUTING */}
+              {activeMenu === 'dashboard' && <DashboardView />}
               
-              {activeMenu === 'input_program' && <FormProgram onSave={handleSaveData} isLoading={isLoading} />}
-              {activeMenu === 'input_kegiatan' && <FormKegiatan onSave={handleSaveData} isLoading={isLoading} programs={programs} />}
-              {activeMenu === 'input_subkegiatan' && <FormSubKegiatan onSave={handleSaveData} isLoading={isLoading} kegiatans={kegiatans} />}
-              {activeMenu === 'input_rekening' && <FormRekening onSave={handleSaveData} isLoading={isLoading} subKegiatans={subKegiatans} rekenings={rekenings} refreshData={fetchAllData} gasUrl={GAS_URL} setModal={setModal} showToast={showToast} />}
+              {activeMenu === 'input_program' && <FormProgram />}
+              {activeMenu === 'input_kegiatan' && <FormKegiatan />}
+              {activeMenu === 'input_subkegiatan' && <FormSubKegiatan />}
+              {activeMenu === 'input_rekening' && <FormRekening />}
               
-              {activeMenu === 'komparasi_anggaran' && <KomparasiAnggaran rekenings={rekenings} subKegiatans={subKegiatans} />}
+              {activeMenu === 'komparasi_anggaran' && <KomparasiAnggaran />}
 
-              {activeMenu === 'wp_asn' && <FormPegawaiASN onSave={handleSaveData} isLoading={isLoading} />}
-              {activeMenu === 'wp_pribadi' && <FormWPPribadi onSave={handleSaveData} isLoading={isLoading} />}
-              {activeMenu === 'wp_pihakketiga' && <FormWPPihakKetiga onSave={handleSaveData} isLoading={isLoading} />}
-              {activeMenu === 'wp_list' && <DaftarWajibPajak pegawaiASN={pegawaiASN} wpPribadi={wpPribadi} wpPihakKetiga={wpPihakKetiga} />}
+              {activeMenu === 'wp_asn' && <FormPegawaiASN />}
+              {activeMenu === 'wp_pribadi' && <FormWPPribadi />}
+              {activeMenu === 'wp_pihakketiga' && <FormWPPihakKetiga />}
+              {activeMenu === 'wp_list' && <DaftarWajibPajak />}
               
-              {activeMenu === 'realisasi_gu' && <FormRealisasiGU onSave={handleSaveData} isLoading={isLoading} subKegiatans={subKegiatans} rekenings={rekenings} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} pegawaiASN={pegawaiASN} wpPribadi={wpPribadi} wpPihakKetiga={wpPihakKetiga} showToast={showToast} kop21={kop21} kopUNI={kopUNI} />}
-              {activeMenu === 'cetak_spj' && <FormCetakSPJ rekenings={rekenings} subKegiatans={subKegiatans} kegiatans={kegiatans} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} dataSPJ={dataSPJ} setDataSPJ={setDataSPJ} pegawaiASN={pegawaiASN} setPrintData={setPrintData} printedNotes={printedNotes} setPrintedNotes={setPrintedNotes} onUpdate={handleUpdateData} isLoading={isLoading} showToast={showToast} />}
-              {activeMenu === 'verifikasi_spj' && <VerifikasiSPJ dataSPJ={dataSPJ} setDataSPJ={setDataSPJ} realisasiGU={realisasiGU} setRealisasiGU={setRealisasiGU} rekenings={rekenings} subKegiatans={subKegiatans} kegiatans={kegiatans} pegawaiASN={pegawaiASN} setPrintData={setPrintData} showToast={showToast} />}
+              {activeMenu === 'realisasi_gu' && <FormRealisasiGU />}
+              {activeMenu === 'cetak_spj' && <FormCetakSPJ />}
+              {activeMenu === 'verifikasi_spj' && <VerifikasiSPJ />}
               
-              {activeMenu === 'laporan_rekap_gu' && <LaporanRekapGU realisasiGU={realisasiGU} rekenings={rekenings} subKegiatans={subKegiatans} />}
-              {activeMenu === 'laporan_coretax' && <LaporanCoreTax realisasiGU={realisasiGU} />}
-              {activeMenu === 'laporan_simdth' && <LaporanSIMDTH dataSPJ={dataSPJ} />}
+              {activeMenu === 'laporan_rekap_gu' && <LaporanRekapGU />}
+              {activeMenu === 'laporan_coretax' && <LaporanCoreTax />}
+              {activeMenu === 'laporan_simdth' && <LaporanSIMDTH />}
             </div>
           </ErrorBoundary>
         </div>
