@@ -23,14 +23,14 @@ export const FormContainer = ({ title, children, onSubmit, isSubmitting }) => {
           </div>
         )}
       </div>
-      
+
       <form onSubmit={onSubmit} className="space-y-10">
         <fieldset disabled={isSubmitting || isReadOnly} className="space-y-10">
           {children}
           {!isReadOnly && (
             <div className="pt-10 flex justify-end">
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="flex items-center gap-3 px-10 py-4 bg-[#0A192F] text-white font-black rounded-2xl hover:bg-black transition-all hover:-translate-y-1 active:scale-95 shadow-2xl shadow-[#0A192F]/30 disabled:opacity-30 disabled:translate-y-0 group focus:outline-none focus:ring-8 focus:ring-[#D4AF37]/20"
               >
                 {isSubmitting ? (
@@ -38,7 +38,7 @@ export const FormContainer = ({ title, children, onSubmit, isSubmitting }) => {
                 ) : (
                   <Save size={20} className="text-[#D4AF37] transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6" />
                 )}
-                <span className="tracking-widest uppercase text-sm">Simpan Data Anggaran</span>
+                <span className="tracking-widest uppercase text-sm">Simpan</span>
               </button>
             </div>
           )}
@@ -51,7 +51,7 @@ export const FormContainer = ({ title, children, onSubmit, isSubmitting }) => {
 export const InputField = ({ label, className, ...props }) => (
   <div className="group">
     <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors duration-300 group-focus-within:text-[#0A192F]">{label}</label>
-    <input className={`w-full px-4 py-2.5 bg-gray-50/50 border rounded-lg focus:ring-4 outline-none transition-all duration-300 hover:border-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed border-gray-200 focus:bg-white focus:ring-[#D4AF37]/30 focus:border-[#0A192F] shadow-sm ${className||''}`} {...props} />
+    <input className={`w-full px-4 py-2.5 bg-gray-50/50 border rounded-lg focus:ring-4 outline-none transition-all duration-300 hover:border-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed border-gray-200 focus:bg-white focus:ring-[#D4AF37]/30 focus:border-[#0A192F] shadow-sm ${className || ''}`} {...props} />
   </div>
 );
 
@@ -69,7 +69,7 @@ const PremiumDropdown = ({ label, options, value, onChange, placeholder, require
 
   const filteredOptions = useMemo(() => {
     const kw = searchTerm.toLowerCase();
-    return safeOptions.filter(opt => 
+    return safeOptions.filter(opt =>
       String(opt?.label || '').toLowerCase().includes(kw) ||
       String(opt?.value || '').toLowerCase().includes(kw)
     );
@@ -147,13 +147,13 @@ const PremiumDropdown = ({ label, options, value, onChange, placeholder, require
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
-      
+
       {/* Hidden native select for HTML5 Form Validation */}
-      <select value={value || ''} onChange={() => {}} className="absolute opacity-0 w-full h-0 pointer-events-none" required={required} disabled={disabled}>
+      <select value={value || ''} onChange={() => { }} className="absolute opacity-0 w-full h-0 pointer-events-none" required={required} disabled={disabled}>
         <option value={value || ''}>{value}</option>
       </select>
 
-      <div 
+      <div
         className={`relative w-full px-4 py-3 bg-white/50 backdrop-blur-md border rounded-xl flex items-center justify-between cursor-pointer transition-all duration-300 ${disabled ? 'bg-gray-100/50 opacity-70 cursor-not-allowed border-gray-200' : isOpen ? 'border-[#0A192F] ring-4 ring-[#D4AF37]/20 bg-white shadow-lg' : 'border-gray-200 hover:border-[#D4AF37] hover:shadow-md'}`}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         tabIndex={disabled ? -1 : 0}
@@ -163,9 +163,9 @@ const PremiumDropdown = ({ label, options, value, onChange, placeholder, require
         </div>
         <div className="flex items-center gap-2">
           {selectedOption && !disabled && !required && (
-             <div onClick={handleClear} className="p-1 hover:bg-red-50 rounded-full text-gray-300 hover:text-red-500 transition-colors">
-               <X size={14} />
-             </div>
+            <div onClick={handleClear} className="p-1 hover:bg-red-50 rounded-full text-gray-300 hover:text-red-500 transition-colors">
+              <X size={14} />
+            </div>
           )}
           <ChevronDown size={18} className={`text-[#D4AF37] transition-transform duration-300 ${isOpen ? 'rotate-180 text-[#0A192F]' : ''}`} />
         </div>
@@ -177,7 +177,7 @@ const PremiumDropdown = ({ label, options, value, onChange, placeholder, require
             <div className="p-3 border-b border-gray-50 bg-gray-50/50 sticky top-0 backdrop-blur-md z-10">
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input 
+                <input
                   type="text"
                   autoFocus
                   className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#0A192F] transition-all font-medium"
@@ -200,7 +200,7 @@ const PremiumDropdown = ({ label, options, value, onChange, placeholder, require
                   const isSelected = String(opt.value) === String(value);
                   const isHighlighted = idx === highlightedIndex;
                   return (
-                    <li 
+                    <li
                       key={idx}
                       onClick={() => handleSelect(opt)}
                       onMouseEnter={() => setHighlightedIndex(idx)}
@@ -249,4 +249,4 @@ export const SelectField = ({ label, children, ...props }) => {
 
 export const SearchableSelect = ({ label, options, ...props }) => {
   return <PremiumDropdown label={label} options={options} {...props} isSearchableSelectApi={true} />;
-};
+};

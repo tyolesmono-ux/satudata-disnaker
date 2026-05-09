@@ -68,8 +68,8 @@ const SummaryCard = ({ title, value, icon: Icon, color, subValue, trend, badge }
 
 // Komponen Filter Modern
 const FilterSection = ({ title, icon: Icon, children }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md">
-    <div className="px-6 py-4 border-b border-gray-50 bg-gradient-to-r from-gray-50/50 to-white">
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md">
+    <div className="px-6 py-4 border-b border-gray-50 bg-gradient-to-r from-gray-50/50 to-white rounded-t-2xl">
       <div className="flex items-center gap-2">
         <Icon size={16} className="text-gray-400" />
         <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">{title}</h3>
@@ -84,8 +84,8 @@ const FilterSection = ({ title, icon: Icon, children }) => (
 // Komponen Tabel Modern
 const ModernTable = ({ headers, data, renderRow, emptyMessage, totalRow }) => {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md">
-      <div className="overflow-x-auto">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md">
+      <div className="overflow-x-auto rounded-2xl">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gradient-to-r from-gray-900 to-gray-800 text-white">

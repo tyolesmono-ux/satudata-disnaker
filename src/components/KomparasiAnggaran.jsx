@@ -1,28 +1,71 @@
 import React, { useState, useMemo } from 'react';
-import { BarChart, TrendingUp, TrendingDown, ArrowRightLeft, Info, HelpCircle } from 'lucide-react';
+import { BarChart, TrendingUp, TrendingDown, ArrowRightLeft, HelpCircle, Filter, AlertCircle } from 'lucide-react';
 import { SelectField } from './SharedUI';
 import { formatRupiah } from '../utils/helpers';
 import { theme } from '../config/constants';
 import { useAppStore } from '../store/useAppStore';
 
+// Modern Summary Card Component (reused style)
+const SummaryCard = ({ title, value, icon: Icon, color, subValue }) => {
+  const colorMap = {
+    blue: { bg: 'bg-blue-50', text: 'text-blue-600', iconBg: 'bg-blue-100' },
+    gold: { bg: 'bg-amber-50', text: 'text-amber-600', iconBg: 'bg-amber-100' },
+    green: { bg: 'bg-emerald-50', text: 'text-emerald-600', iconBg: 'bg-emerald-100' },
+    red: { bg: 'bg-rose-50', text: 'text-rose-600', iconBg: 'bg-rose-100' },
+    gray: { bg: 'bg-gray-50', text: 'text-gray-600', iconBg: 'bg-gray-100' }
+  };
+  const styles = colorMap[color] || colorMap.gray;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all duration-300 hover:shadow-md hover:-translate-y-1 group">
+      <div className="flex items-start justify-between mb-4">
+        <div className={`p-3 rounded-xl ${styles.iconBg} transition-all duration-300 group-hover:scale-110`}>
+          <Icon size={22} className={styles.text} />
+        </div>
+        {subValue && <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{subValue}</span>}
+      </div>
+      <div>
+        <p className="text-sm font-medium text-gray-500 mb-1 font-['Roboto']">{title}</p>
+        <p className={`text-2xl font-black ${styles.text} tracking-tight`}>{value}</p>
+      </div>
+    </div>
+  );
+};
+
+// Badge untuk status perubahan
+const StatusBadge = ({ status }) => {
+  const config = {
+    'Rekening Baru': { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: <TrendingUp size={12} /> },
+    'Bertambah': { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: <TrendingUp size={12} /> },
+    'Berkurang / Efisiensi': { bg: 'bg-orange-100', text: 'text-orange-700', icon: <TrendingDown size={12} /> },
+    'Tetap': { bg: 'bg-gray-100', text: 'text-gray-600', icon: null }
+  };
+  const { bg, text, icon } = config[status] || config.Tetap;
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold ${bg} ${text}`}>
+      {icon}
+      {status === 'Berkurang / Efisiensi' ? 'Berkurang' : status}
+    </span>
+  );
+};
+
 export const KomparasiAnggaran = () => {
   const { rekenings, subKegiatans } = useAppStore();
-  const currentYear = new Date().getFullYear().toString();
   const [tahunAnggaran, setTahunAnggaran] = useState(new Date().getFullYear().toString());
   const [tahapAwal, setTahapAwal] = useState('APBD');
   const [tahapAkhir, setTahapAkhir] = useState('Pergeseran 1');
 
-  // Dapatkan daftar tahap unik dari data
+  // Dapatkan daftar tahun unik dari data
   const availableTahun = useMemo(() => {
     const years = new Set((rekenings || []).map(r => String(r.tahun_anggaran)).filter(Boolean));
     const sorted = Array.from(years).sort((a, b) => b - a);
     return sorted.length > 0 ? sorted : [new Date().getFullYear().toString()];
   }, [rekenings]);
 
+  // Daftar tahap yang tersedia
   const availableTahap = useMemo(() => {
     const tahaps = new Set((rekenings || []).map(r => r.tahap_anggaran).filter(Boolean));
     if (tahaps.size === 0) return ['APBD', 'Pergeseran 1', 'Pergeseran 2', 'Perubahan'];
-    
     const order = ['APBD', 'Pergeseran 1', 'Pergeseran 2', 'Perubahan'];
     return Array.from(tahaps).sort((a, b) => {
       const idxA = order.indexOf(a);
@@ -35,10 +78,9 @@ export const KomparasiAnggaran = () => {
   }, [rekenings]);
 
   const { dataKomparasi, summary } = useMemo(() => {
-    // a. Filter berdasarkan tahun
     const filteredRekenings = (rekenings || []).filter(r => String(r.tahun_anggaran) === tahunAnggaran);
 
-    // Persiapkan Helper Nama Sub Kegiatan
+    // Map sub kegiatan
     const mapSubKegiatan = new Map();
     (subKegiatans || []).forEach(s => {
       mapSubKegiatan.set(String(s.kode_subkegiatan), s.nama_subkegiatan);
@@ -46,18 +88,16 @@ export const KomparasiAnggaran = () => {
 
     const mapData = new Map();
 
-    // b & c. Kelompokkan data dan hitung pagu
     filteredRekenings.forEach(r => {
       const kodeSub = String(r.kode_subkegiatan || '').replace(/^'/, '');
       const kodeRek = String(r.kode_rekening || '').replace(/^'/, '');
       if (!kodeSub || !kodeRek) return;
 
       const key = `${kodeSub}-${kodeRek}`;
-      
       if (!mapData.has(key)) {
         mapData.set(key, {
           kode_subkegiatan: kodeSub,
-          nama_subkegiatan: mapSubKegiatan.get(kodeSub) || 'Unknown Sub Kegiatan',
+          nama_subkegiatan: mapSubKegiatan.get(kodeSub) || 'Sub Kegiatan Tidak Dikenal',
           kode_rekening: kodeRek,
           nama_rekening: r.nama_rekening,
           paguInduk: 0,
@@ -67,42 +107,29 @@ export const KomparasiAnggaran = () => {
 
       const item = mapData.get(key);
       const val = Number(r.pagu) || 0;
-
-      if (r.tahap_anggaran === tahapAwal) {
-        item.paguInduk += val;
-      } else if (r.tahap_anggaran === tahapAkhir) {
-        item.paguPerubahan += val;
-      }
+      if (r.tahap_anggaran === tahapAwal) item.paguInduk += val;
+      else if (r.tahap_anggaran === tahapAkhir) item.paguPerubahan += val;
     });
 
-    let totalInduk = 0;
-    let totalPerubahan = 0;
+    let totalInduk = 0, totalPerubahan = 0;
     const finalData = [];
 
-    // d, e, f, & g. Hitung selisih, tentukan status, dan filter
     mapData.forEach(item => {
       totalInduk += item.paguInduk;
       totalPerubahan += item.paguPerubahan;
 
       const selisih = item.paguPerubahan - item.paguInduk;
       let status = '';
-
-      if (item.paguInduk === 0 && item.paguPerubahan > 0) {
-        status = 'Rekening Baru';
-      } else if (selisih > 0) {
-        status = 'Bertambah';
-      } else if (selisih < 0) {
-        status = 'Berkurang / Efisiensi';
-      } else {
-        status = 'Tetap';
-      }
+      if (item.paguInduk === 0 && item.paguPerubahan > 0) status = 'Rekening Baru';
+      else if (selisih > 0) status = 'Bertambah';
+      else if (selisih < 0) status = 'Berkurang / Efisiensi';
+      else status = 'Tetap';
 
       if (status !== 'Tetap') {
         finalData.push({ ...item, selisih, status });
       }
     });
 
-    // Urutkan berdasarkan Sub Kegiatan, lalu Kode Rekening
     finalData.sort((a, b) => {
       if (a.kode_subkegiatan === b.kode_subkegiatan) {
         return a.kode_rekening.localeCompare(b.kode_rekening);
@@ -110,135 +137,168 @@ export const KomparasiAnggaran = () => {
       return a.kode_subkegiatan.localeCompare(b.kode_subkegiatan);
     });
 
-    const sum = {
-      totalInduk,
-      totalPerubahan,
-      defisitSurplus: totalPerubahan - totalInduk
+    return {
+      dataKomparasi: finalData,
+      summary: {
+        totalInduk,
+        totalPerubahan,
+        defisitSurplus: totalPerubahan - totalInduk
+      }
     };
-
-    return { dataKomparasi: finalData, summary: sum };
   }, [rekenings, subKegiatans, tahunAnggaran, tahapAwal, tahapAkhir]);
 
-  // Render Status Badge
-  const renderBadge = (status) => {
-    switch (status) {
-      case 'Rekening Baru':
-      case 'Bertambah':
-        return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded flex items-center gap-1 w-max"><TrendingUp size={14} /> {status}</span>;
-      case 'Berkurang / Efisiensi':
-        return <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded flex items-center gap-1 w-max"><TrendingDown size={14} /> {status}</span>;
-      default:
-        return <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-bold rounded w-max">{status}</span>;
-    }
-  };
-
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
-      
-      {/* Header & Filter */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+    <div className="max-w-7xl mx-auto space-y-8 px-4 sm:px-6 lg:px-0">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold flex items-center gap-2 text-[#0A192F]">
-            <BarChart className="text-[#D4AF37]" size={24} /> Analisis Pergeseran Anggaran
-          </h2>
-          <p className="text-sm text-gray-500 mt-1 flex flex-wrap gap-1 items-center">
-            Membandingkan Pagu <span className="px-2 py-0.5 bg-gray-100 rounded-md font-bold">{tahapAwal}</span> melawan <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md font-bold">{tahapAkhir}</span>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2.5 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl shadow-lg">
+              <BarChart size={24} className="text-white" />
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight font-['Roboto']">
+              Analisis Pergeseran Anggaran
+            </h1>
+          </div>
+          <p className="text-gray-500 text-sm ml-14 font-['Roboto']">
+            Membandingkan pagu antar tahapan anggaran untuk melihat perubahan dan efisiensi
           </p>
         </div>
-        <div className="w-full justify-end flex flex-col md:flex-row gap-2">
-          <SelectField label="Komparasi Awal" value={tahapAwal} onChange={e => setTahapAwal(e.target.value)}>
-            {availableTahap.map(t => <option key={t} value={t}>{t}</option>)}
-          </SelectField>
-          <div className="flex items-center justify-center pt-6 px-1 hidden md:flex">
-             <ArrowRightLeft className="text-gray-300" size={16} />
+      </div>
+
+      {/* Filter Section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md">
+        <div className="px-6 py-4 border-b border-gray-50 bg-gradient-to-r from-gray-50/50 to-white rounded-t-2xl">
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-gray-400" />
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-['Roboto']">Filter Analisis</h3>
           </div>
-          <SelectField label="Komparasi Akhir" value={tahapAkhir} onChange={e => setTahapAkhir(e.target.value)}>
-            {availableTahap.map(t => <option key={t} value={t}>{t}</option>)}
-          </SelectField>
-          <SelectField label="Filter Tahun" value={tahunAnggaran} onChange={e => setTahunAnggaran(e.target.value)}>
-            {availableTahun.map(y => <option key={y} value={y}>{y}</option>)}
-          </SelectField>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <SelectField
+              label="Tahun Anggaran"
+              value={tahunAnggaran}
+              onChange={e => setTahunAnggaran(e.target.value)}
+              className="font-['Roboto']"
+            >
+              {availableTahun.map(y => <option key={y} value={y}>{y}</option>)}
+            </SelectField>
+            <SelectField
+              label="Tahap Awal (Pagu Induk)"
+              value={tahapAwal}
+              onChange={e => setTahapAwal(e.target.value)}
+            >
+              {availableTahap.map(t => <option key={t} value={t}>{t}</option>)}
+            </SelectField>
+            <SelectField
+              label="Tahap Akhir (Pagu Banding)"
+              value={tahapAkhir}
+              onChange={e => setTahapAkhir(e.target.value)}
+            >
+              {availableTahap.map(t => <option key={t} value={t}>{t}</option>)}
+            </SelectField>
+            <div className="flex items-end">
+              <div className="w-full bg-gray-50 rounded-xl p-3 text-center border border-gray-100">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Perbandingan</p>
+                <p className="text-sm font-bold text-gray-700 mt-1">{tahapAwal} → {tahapAkhir}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full -translate-y-8 translate-x-8 group-hover:bg-blue-100 transition-colors duration-500"></div>
-          <p className="text-sm font-semibold text-gray-500 relative z-10">Total Pagu: {tahapAwal}</p>
-          <p className="text-2xl font-black text-[#0A192F] mt-1 relative z-10">{formatRupiah(summary.totalInduk)}</p>
-        </div>
-        
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-[#D4AF37]/10 rounded-full -translate-y-8 translate-x-8 group-hover:bg-[#D4AF37]/20 transition-colors duration-500"></div>
-          <p className="text-sm font-semibold text-gray-500 relative z-10">Total Pagu: {tahapAkhir}</p>
-          <p className="text-2xl font-black text-[#D4AF37] mt-1 relative z-10">{formatRupiah(summary.totalPerubahan)}</p>
-        </div>
-
-        <div className={`p-5 rounded-2xl shadow-sm border relative overflow-hidden group ${summary.defisitSurplus > 0 ? 'bg-green-50 border-green-100' : summary.defisitSurplus < 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
-          <div className="absolute top-0 right-0 w-24 h-24 bg-white/40 rounded-full -translate-y-8 translate-x-8 group-hover:bg-white/60 transition-colors duration-500"></div>
-          <p className={`text-sm font-semibold relative z-10 ${summary.defisitSurplus > 0 ? 'text-green-700' : summary.defisitSurplus < 0 ? 'text-red-700' : 'text-gray-500'}`}>
-            <span className="flex items-center gap-1">
-              {summary.defisitSurplus > 0 ? <TrendingUp size={16} /> : summary.defisitSurplus < 0 ? <TrendingDown size={16} /> : <ArrowRightLeft size={16} />} 
-              {summary.defisitSurplus > 0 ? 'Total Anggaran Bertambah' : summary.defisitSurplus < 0 ? 'Total Anggaran Berkurang' : 'Total Anggaran Tetap'}
-            </span>
-          </p>
-          <p className={`text-2xl font-black mt-1 relative z-10 ${summary.defisitSurplus > 0 ? 'text-green-600' : summary.defisitSurplus < 0 ? 'text-red-600' : 'text-gray-600'}`}>
-            {summary.defisitSurplus > 0 ? '+' : ''}{formatRupiah(summary.defisitSurplus)}
-          </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <SummaryCard
+          title={`Total Pagu: ${tahapAwal}`}
+          value={formatRupiah(summary.totalInduk)}
+          icon={BarChart}
+          color="blue"
+          subValue="Anggaran Awal"
+        />
+        <SummaryCard
+          title={`Total Pagu: ${tahapAkhir}`}
+          value={formatRupiah(summary.totalPerubahan)}
+          icon={TrendingUp}
+          color="gold"
+          subValue="Anggaran Akhir"
+        />
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 transition-all duration-300 hover:shadow-md hover:-translate-y-1 group">
+          <div className="flex items-start justify-between mb-4">
+            <div className={`p-3 rounded-xl ${summary.defisitSurplus > 0 ? 'bg-emerald-100' : summary.defisitSurplus < 0 ? 'bg-rose-100' : 'bg-gray-100'} transition-all duration-300 group-hover:scale-110`}>
+              {summary.defisitSurplus > 0 ? <TrendingUp size={22} className="text-emerald-600" /> : summary.defisitSurplus < 0 ? <TrendingDown size={22} className="text-rose-600" /> : <ArrowRightLeft size={22} className="text-gray-500" />}
+            </div>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Net Perubahan</span>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500 mb-1 font-['Roboto']">
+              {summary.defisitSurplus > 0 ? 'Anggaran Bertambah' : summary.defisitSurplus < 0 ? 'Anggaran Berkurang' : 'Tidak Ada Perubahan'}
+            </p>
+            <p className={`text-2xl font-black tracking-tight ${summary.defisitSurplus > 0 ? 'text-emerald-600' : summary.defisitSurplus < 0 ? 'text-rose-600' : 'text-gray-500'}`}>
+              {summary.defisitSurplus !== 0 && (summary.defisitSurplus > 0 ? '+' : '')}{formatRupiah(summary.defisitSurplus)}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Main Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
-          <h3 className="font-bold text-[#0A192F]">Detail Rekening yang Berubah</h3>
-          <span className="text-xs font-semibold bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
-            Ditemukan {dataKomparasi.length} perubahan
-          </span>
+      {/* Tabel Detail Perubahan */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md">
+        <div className="px-6 py-4 border-b border-gray-50 bg-gradient-to-r from-gray-50/50 to-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold text-gray-700 font-['Roboto']">Detail Rekening yang Mengalami Perubahan</h3>
+            <span className="px-2.5 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold">
+              {dataKomparasi.length} item
+            </span>
+          </div>
+          <p className="text-[11px] text-gray-400">Hanya menampilkan rekening dengan perubahan nilai</p>
         </div>
-        
+
         {dataKomparasi.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
-             <HelpCircle className="mx-auto mb-3 text-gray-300" size={48} />
-             <p className="font-semibold text-lg">Tidak ada pergeseran</p>
-             <p className="text-sm">Semua pagu masih bernilai Tetap atau tidak ada data pada tahap yang sedang dibandingkan.</p>
+          <div className="p-12 text-center">
+            <div className="flex flex-col items-center justify-center text-gray-400">
+              <HelpCircle size={48} className="mb-3 opacity-50" />
+              <p className="text-base font-semibold text-gray-500 font-['Roboto']">Tidak Ada Perubahan</p>
+              <p className="text-sm text-gray-400 mt-1">Semua pagu masih tetap atau data tidak tersedia pada tahap yang dipilih.</p>
+            </div>
           </div>
         ) : (
-          <div className="overflow-x-auto max-h-[600px] custom-scrollbar">
-            <table className="w-full text-sm text-left border-separate border-spacing-0">
-              <thead className="bg-[#0A192F] text-white sticky top-0 z-10">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm font-['Roboto']">
+              <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="p-4 font-bold uppercase tracking-wider text-[10px] w-64 border-b border-white/10">Sub Kegiatan</th>
-                  <th className="p-4 font-bold uppercase tracking-wider text-[10px] border-b border-white/10">Kode & Nama Rekening</th>
-                  <th className="p-4 font-bold uppercase tracking-wider text-[10px] text-right border-b border-white/10">Pagu Awal (Rp)</th>
-                  <th className="p-4 font-bold uppercase tracking-wider text-[10px] text-right border-b border-white/10">Pagu Akhir (Rp)</th>
-                  <th className="p-4 font-bold uppercase tracking-wider text-[10px] text-right border-b border-white/10">Selisih (Rp)</th>
-                  <th className="p-4 font-bold uppercase tracking-wider text-[10px] border-b border-white/10">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Sub Kegiatan</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Rekening</th>
+                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Pagu Awal</th>
+                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Pagu Akhir</th>
+                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Selisih</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-50">
                 {dataKomparasi.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4 align-top">
-                      <div className="text-xs text-blue-600 font-bold mb-1">{item.kode_subkegiatan}</div>
-                      <div className="text-xs text-gray-600 line-clamp-2" title={item.nama_subkegiatan}>{item.nama_subkegiatan}</div>
+                  <tr key={idx} className="hover:bg-gray-50/50 transition-colors duration-150">
+                    <td className="px-6 py-4 align-top">
+                      <div className="text-xs font-mono text-blue-600 font-bold mb-1">{item.kode_subkegiatan}</div>
+                      <div className="text-sm text-gray-700 line-clamp-2" title={item.nama_subkegiatan}>
+                        {item.nama_subkegiatan.length > 60 ? `${item.nama_subkegiatan.substring(0, 60)}...` : item.nama_subkegiatan}
+                      </div>
                     </td>
-                    <td className="p-4 align-top">
-                      <div className="text-xs text-gray-500 mb-1">{item.kode_rekening}</div>
-                      <div className="font-semibold text-[#0A192F]">{item.nama_rekening}</div>
+                    <td className="px-6 py-4 align-top">
+                      <div className="text-xs font-mono text-gray-500 mb-1">{item.kode_rekening}</div>
+                      <div className="font-semibold text-gray-800">{item.nama_rekening}</div>
                     </td>
-                    <td className="p-4 text-right align-top tabular-nums text-gray-500">
+                    <td className="px-6 py-4 text-right font-medium text-gray-600 tabular-nums">
                       {formatRupiah(item.paguInduk)}
                     </td>
-                    <td className="p-4 text-right align-top tabular-nums font-semibold text-[#D4AF37]">
+                    <td className="px-6 py-4 text-right font-bold text-amber-600 tabular-nums">
                       {formatRupiah(item.paguPerubahan)}
                     </td>
-                    <td className={`p-4 text-right align-top tabular-nums font-bold ${item.selisih > 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                    <td className={`px-6 py-4 text-right font-bold tabular-nums ${item.selisih > 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
                       {item.selisih > 0 ? '+' : ''}{formatRupiah(item.selisih)}
                     </td>
-                    <td className="p-4 align-top">
-                      {renderBadge(item.status)}
+                    <td className="px-6 py-4">
+                      <StatusBadge status={item.status} />
                     </td>
                   </tr>
                 ))}
@@ -247,6 +307,13 @@ export const KomparasiAnggaran = () => {
           </div>
         )}
       </div>
+
+      {/* Catatan kaki */}
+      {dataKomparasi.length > 0 && (
+        <div className="text-xs text-gray-400 text-center py-2 font-['Roboto']">
+          * Hanya menampilkan rekening dengan perubahan nilai dari {tahapAwal} ke {tahapAkhir}
+        </div>
+      )}
     </div>
   );
 };

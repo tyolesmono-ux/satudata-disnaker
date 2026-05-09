@@ -12,7 +12,7 @@ export const FormRealisasiGU = () => {
     pegawaiASN, wpPribadi, wpPihakKetiga, showToast, kop21, kopUNI,
     handleSaveData, buatSPJBundle, batchInsertRealisasi, modal, token
   } = useAppStore();
-  
+
   const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({
     tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD', bulan_spj: '', proses_gu: 'GU-01',
@@ -98,16 +98,16 @@ export const FormRealisasiGU = () => {
     const rek = availableRekenings.find(r => String(r.timestamp) === String(formData.rekening_id));
     const total = rek ? Number(rek.pagu) : 0;
     const realData = Array.isArray(realisasiGU) ? realisasiGU : [];
-    
+
     // Hitung sisa pagu juga harus spesifik ke rekening + paket ini (berdasarkan rekening_id/timestamp)
-    const terpakai = realData.filter(r => 
-      String(r.tahun_anggaran) === String(formData.tahun_anggaran) && 
-      String(r.tahap_anggaran) === String(formData.tahap_anggaran) && 
-      String(r.kode_subkegiatan) === String(formData.kode_subkegiatan) && 
+    const terpakai = realData.filter(r =>
+      String(r.tahun_anggaran) === String(formData.tahun_anggaran) &&
+      String(r.tahap_anggaran) === String(formData.tahap_anggaran) &&
+      String(r.kode_subkegiatan) === String(formData.kode_subkegiatan) &&
       String(r.kode_rekening) === String(formData.kode_rekening) &&
       String(r.rekening_id) === String(formData.rekening_id) // Filter tambahan untuk identitas unik
     ).reduce((sum, r) => sum + Number(r.nominal_nota || 0), 0);
-    
+
     return { paguTotal: total, paguTersedia: total - terpakai };
   }, [availableRekenings, formData.rekening_id, formData.kode_rekening, formData.tahun_anggaran, formData.tahap_anggaran, realisasiGU, formData.kode_subkegiatan]);
 
@@ -142,19 +142,19 @@ export const FormRealisasiGU = () => {
   const masalPersons = useMemo(() => {
     // Isolasi sumber data secara absolut berdasarkan tab
     const source = masalTab === 'transport' ? (wpPribadi || []) : (pegawaiASN || []);
-    
+
     const seen = new Set();
     const list = [];
-    
+
     (source || []).forEach((p, idx) => {
       const rawNip = String(p.nip || p.NIP || p.Nip || '').replace(/^'/, '').trim();
       const rawNik = String(p.nik || p.NIK || p.Nik || '').replace(/^'/, '').trim();
-      
+
       const primaryId = masalTab === 'transport' ? rawNik : rawNip;
       // Gunakan prefix tab + fallback index jika NIP/NIK benar-benar kosong di sheet 
       // sehingga React akan unmount baris secara paksa setiap pindah tab dan mencegah bug layout "tertarik"
       const uniqueId = primaryId ? `${masalTab}-${primaryId}` : `${masalTab}-kosong-${idx}`;
-      
+
       if (!seen.has(uniqueId)) {
         seen.add(uniqueId);
         list.push({
@@ -173,9 +173,9 @@ export const FormRealisasiGU = () => {
 
     if (!masalSearch) return list;
     const kw = masalSearch.toLowerCase();
-    return list.filter(p => 
-      p.nama.toLowerCase().includes(kw) || 
-      p.nik.toLowerCase().includes(kw) || 
+    return list.filter(p =>
+      p.nama.toLowerCase().includes(kw) ||
+      p.nik.toLowerCase().includes(kw) ||
       (p.nip && p.nip.toLowerCase().includes(kw))
     );
   }, [masalTab, masalSearch, wpPribadi, pegawaiASN]);
@@ -250,9 +250,9 @@ export const FormRealisasiGU = () => {
 
     const success = await batchInsertRealisasi(items);
     if (success) {
-      setMasalChecked(new Set()); 
-      setMasalNominal(''); 
-      setMasalNominals({}); 
+      setMasalChecked(new Set());
+      setMasalNominal('');
+      setMasalNominals({});
       setMasalSearch('');
       setFormData(prev => ({ ...prev, keterangan_nota: '', tanggal_nota: '' }));
     }
@@ -272,7 +272,7 @@ export const FormRealisasiGU = () => {
       {/* === SECTION 1: FILTER HEADER === */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4 p-4 rounded-lg bg-blue-50 border border-blue-100">
         <SelectField label="Tahun" value={formData.tahun_anggaran} onChange={e => setFormData({ ...formData, tahun_anggaran: e.target.value })} required>
-          {Array.from(new Set(rekenings.map(r => String(r.tahun_anggaran)))).sort((a,b) => b-a).map(y => <option key={y} value={y}>{y}</option>)}
+          {Array.from(new Set(rekenings.map(r => String(r.tahun_anggaran)))).sort((a, b) => b - a).map(y => <option key={y} value={y}>{y}</option>)}
         </SelectField>
         <SelectField label="Tahap" value={formData.tahap_anggaran} onChange={e => setFormData({ ...formData, tahap_anggaran: e.target.value })} required>
           <option value="APBD">APBD</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Pergeseran 2">Pergeseran 2</option><option value="Perubahan">Perubahan (PAK)</option>
@@ -303,8 +303,8 @@ export const FormRealisasiGU = () => {
             if (rek) handleSelectRek(rek);
             else setFormData({ ...formData, kode_rekening: '', rekening_id: '' });
           }}
-          options={(availableRekenings || []).map(r => ({ 
-            value: r.timestamp, 
+          options={(availableRekenings || []).map(r => ({
+            value: r.timestamp,
             label: `[${r.kode_rekening}] ${r.nama_rekening}`,
             sublabel: r.paket_belanja ? `📦 ${r.paket_belanja}` : ''
           }))}
@@ -487,7 +487,7 @@ export const FormRealisasiGU = () => {
                   const pph = isChecked ? calcMasalPph21(p, nom) : 0;
                   // Konstanta lokal untuk memastikan konsistensi render per baris
                   const isHonorTab = masalTab === 'honor';
-                  
+
                   return (
                     <tr key={p.id} onClick={() => handleMasalToggle(p.id)} className={`cursor-pointer transition-colors ${isChecked ? 'bg-blue-50/70' : 'hover:bg-gray-50'}`}>
                       <td className="p-3"><input type="checkbox" checked={isChecked} readOnly className="w-4 h-4 accent-[#D4AF37]" /></td>
@@ -503,13 +503,13 @@ export const FormRealisasiGU = () => {
                       )}
                       {isHonorTab && (
                         <td className="p-3" onClick={e => e.stopPropagation()}>
-                          <input 
-                            type="number" 
-                            value={masalNominals[p.id] || ''} 
-                            onChange={e => setMasalNominals(prev => ({ ...prev, [p.id]: e.target.value }))} 
-                            placeholder="0" 
-                            className="w-full border rounded px-2 py-1 text-sm text-right" 
-                            disabled={!isChecked} 
+                          <input
+                            type="number"
+                            value={masalNominals[p.id] || ''}
+                            onChange={e => setMasalNominals(prev => ({ ...prev, [p.id]: e.target.value }))}
+                            placeholder="0"
+                            className="w-full border rounded px-2 py-1 text-sm text-right"
+                            disabled={!isChecked}
                           />
                         </td>
                       )}
@@ -625,7 +625,7 @@ export const FormCetakSPJ = () => {
       <h2 className="text-xl font-bold mb-6 pb-2 border-b flex items-center"><Printer size={20} className="mr-2" /> Pengajuan SPJ</h2>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4 bg-gray-50 p-4 rounded border">
         <SelectField label="Tahun" value={filter.tahun_anggaran} onChange={e => setFilter({ ...filter, tahun_anggaran: e.target.value })}>
-          {Array.from(new Set(rekenings.map(r => String(r.tahun_anggaran)))).sort((a,b) => b-a).map(y => <option key={y} value={y}>{y}</option>)}
+          {Array.from(new Set(rekenings.map(r => String(r.tahun_anggaran)))).sort((a, b) => b - a).map(y => <option key={y} value={y}>{y}</option>)}
         </SelectField>
         <SelectField label="Tahap" value={filter.tahap_anggaran} onChange={e => setFilter({ ...filter, tahap_anggaran: e.target.value })}>
           <option value="APBD">APBD</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Pergeseran 2">Pergeseran 2</option><option value="Perubahan">Perubahan (PAK)</option>
@@ -633,26 +633,26 @@ export const FormCetakSPJ = () => {
         <SelectField label="Bulan SPJ" value={filter.bulan_spj} onChange={e => setFilter({ ...filter, bulan_spj: e.target.value })}><option value="">-- Pilih Bulan --</option>{['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(b => <option key={b} value={b}>{b}</option>)}</SelectField>
         <SelectField label="Proses GU" value={filter.proses_gu} onChange={e => setFilter({ ...filter, proses_gu: e.target.value })}>{guOptions.map(gu => <option key={gu} value={gu}>{gu}</option>)}</SelectField>
         <div className="md:col-span-2">
-          <SearchableSelect 
-            label="Sub Kegiatan" 
-            value={filter.kode_subkegiatan} 
+          <SearchableSelect
+            label="Sub Kegiatan"
+            value={filter.kode_subkegiatan}
             onChange={val => setFilter({ ...filter, kode_subkegiatan: val, kode_rekening: '', rekening_id: '' })}
             options={(subKegiatans || []).map(s => ({ value: s.kode_subkegiatan, label: `[${s.kode_subkegiatan}] ${s.nama_subkegiatan}` }))}
             placeholder="Pilih Sub Kegiatan..."
           />
         </div>
         <div className="md:col-span-2">
-          <SearchableSelect 
-            label="Rekening Belanja" 
-            value={filter.rekening_id} 
+          <SearchableSelect
+            label="Rekening Belanja"
+            value={filter.rekening_id}
             onChange={val => {
               const rek = (availableRekenings || []).find(r => String(r.timestamp) === String(val));
               if (rek) setFilter({ ...filter, kode_rekening: rek.kode_rekening, rekening_id: rek.timestamp });
               else setFilter({ ...filter, kode_rekening: '', rekening_id: '' });
             }}
             disabled={!filter.kode_subkegiatan}
-            options={(availableRekenings || []).map(r => ({ 
-              value: r.timestamp, 
+            options={(availableRekenings || []).map(r => ({
+              value: r.timestamp,
               label: `[${r.kode_rekening}] ${r.nama_rekening}`,
               sublabel: r.paket_belanja ? `📦 ${r.paket_belanja}` : ''
             }))}

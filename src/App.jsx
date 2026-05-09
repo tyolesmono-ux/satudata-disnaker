@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Wallet, ChevronDown, ChevronRight, Menu, CheckCircle2, AlertCircle, Users, ReceiptText, ShieldCheck, FileText, BarChart, History, FileSpreadsheet, Tag } from 'lucide-react';
+import {
+  LayoutDashboard, Wallet, ChevronDown, ChevronRight, Menu,
+  CheckCircle2, AlertCircle, Users, ReceiptText, ShieldCheck,
+  FileText, BarChart, History, FileSpreadsheet, Tag, LogOut,
+  Home, Settings, FileCheck, Printer, TrendingUp, Eye
+} from 'lucide-react';
 
-// Import Komfigurasi & Helper
+// Import Konfigurasi & Helper
 import { GAS_URL, theme } from './config/constants';
 import { fetchWithTimeout } from './utils/api';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -25,6 +30,13 @@ import logo from './assets/satudata-logo.png';
 
 import { useAppStore } from './store/useAppStore';
 
+// Helper untuk breadcrumb
+const getBreadcrumb = (pathname) => {
+  const paths = pathname.split('/').filter(Boolean);
+  if (paths.length === 0) return 'Dashboard';
+  return paths.map(p => p.replace(/-/g, ' ')).join(' / ');
+};
+
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -42,7 +54,6 @@ export default function App() {
   } = useAppStore();
 
   const activePath = location.pathname;
-
   const isLoading = modal.show && modal.status === 'loading';
 
   useEffect(() => {
@@ -64,10 +75,10 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-        {/* TOAST NOTIFICATION (Bisa dipindah ke komponen global agar bisa dipanggil dari manapun) */}
+        {/* TOAST NOTIFICATION */}
         {toast.show && (
-          <div className="absolute bottom-8 right-8 animate-in slide-in-from-bottom-8 duration-300 z-50">
-            <div className={`flex items-center gap-3 px-6 py-4 rounded-lg shadow-lg text-white ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+          <div className="fixed bottom-8 right-8 animate-in slide-in-from-bottom-8 duration-300 z-50">
+            <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-lg text-white ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'}`}>
               {toast.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
               <span className="font-medium">{toast.message}</span>
             </div>
@@ -76,245 +87,345 @@ export default function App() {
       </>
     );
   }
-  
+
   return (
-    <div className="flex h-screen font-sans bg-[#F3F4F6]">
-      {/* SIDEBAR */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} flex flex-col transition-all duration-300 shadow-xl z-20 overflow-y-auto bg-[#0A192F]`}>
-        <div className={`relative p-5 mb-4 flex items-center ${sidebarOpen ? 'justify-center' : 'justify-center'}`}>
+    <div className="flex h-screen bg-gray-50 font-sans antialiased">
+      {/* SIDEBAR - Modern Dark Theme */}
+      <aside
+        className={`${sidebarOpen ? 'w-72' : 'w-20'} flex flex-col transition-all duration-300 ease-in-out shadow-2xl z-20 overflow-y-auto bg-gradient-to-b from-[#0A192F] to-[#0F2A44]`}
+      >
+        {/* Logo Area - Compact Premium Style */}
+        <div className={`relative pt-14 pb-4 mb-4 flex flex-col items-center transition-all duration-300 ${sidebarOpen ? 'px-6' : 'px-4'}`}>
+          <div className={`bg-white rounded-3xl shadow-xl flex flex-col items-center transition-all duration-500 group overflow-hidden ${sidebarOpen ? 'p-4 w-full h-28 justify-center' : 'p-2 w-10 h-10'}`}>
+            <img 
+              src={logo} 
+              alt="SatuData Logo" 
+              className={`transition-all duration-500 object-contain ${sidebarOpen ? 'h-20 w-auto' : 'h-6 w-6'}`} 
+            />
+          </div>
+          
           {sidebarOpen && (
-            <div className="bg-white p-3 rounded-2xl shadow-lg border border-white/20 flex items-center justify-center">
-              <img src={logo} alt="SatuData Logo" className="h-16 w-auto" />
-            </div>
+            <p className="mt-4 text-[9px] font-black text-white/40 uppercase tracking-[0.2em] animate-in fade-in duration-700">
+              Disnaker Kota Surakarta
+            </p>
           )}
-          <button 
-            onClick={() => setSidebarOpen(!sidebarOpen)} 
-            className={`${sidebarOpen ? 'absolute right-5' : ''} p-1 rounded-md hover:bg-white/10 text-white transition-colors`}
+
+          {/* Hamburger Button - Optimized Vertical Position */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`absolute transition-all duration-300 p-2 rounded-xl text-white/50 hover:text-white hover:bg-white/10 ${sidebarOpen ? 'top-4 right-2' : 'top-2 left-1/2 -translate-x-1/2 bg-white/5 border border-white/10'}`}
           >
-            <Menu size={24} />
+            <Menu size={18} />
           </button>
         </div>
-        <nav className="flex-1 px-3 space-y-2 pb-6">
-          <NavLink to="/" className={({ isActive }) => `w-full flex items-center p-3 rounded-lg transition-all duration-300 hover-scale ${isActive ? 'bg-white/10 shadow-lg' : 'hover:bg-white/5'}`}>
-            {({ isActive }) => (
-              <>
-                <LayoutDashboard size={20} style={{ color: isActive ? theme.gold : '#9ca3af' }} className="shrink-0" />
-                {sidebarOpen && <span className="ml-3 font-medium text-white">Dashboard</span>}
-              </>
-            )}
+
+        {/* Navigation */}
+        <nav className="flex-1 px-4 space-y-1 pb-8">
+          {/* Dashboard */}
+          <NavLink
+            to="/"
+            className={({ isActive }) => `
+              flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group
+              ${isActive
+                ? 'bg-gradient-to-r from-amber-500/20 to-amber-600/10 text-amber-400 shadow-lg shadow-amber-500/10'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }
+            `}
+          >
+            <Home size={20} className="shrink-0" />
+            {sidebarOpen && <span className="font-semibold text-sm">Dashboard</span>}
           </NavLink>
+
+          {/* Anggaran Section */}
           <div className="pt-2">
-            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'anggaran' ? null : 'anggaran'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-all duration-300 hover-scale hover:bg-white/5">
-              <div className="flex items-center"><Wallet size={20} style={{ color: activePath.startsWith('/anggaran') ? theme.gold : '#9ca3af' }} className="shrink-0" />{sidebarOpen && <span className="ml-3 font-medium text-white">Anggaran</span>}</div>
-              {sidebarOpen && (expandedMenu === 'anggaran' ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
+            <button
+              onClick={() => { if (!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'anggaran' ? null : 'anggaran'); }}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 hover:bg-white/5 text-gray-400 hover:text-white group"
+            >
+              <div className="flex items-center gap-3">
+                <Wallet size={20} className="shrink-0" />
+                {sidebarOpen && <span className="font-semibold text-sm">Anggaran</span>}
+              </div>
+              {sidebarOpen && (
+                expandedMenu === 'anggaran'
+                  ? <ChevronDown size={16} className="text-gray-500" />
+                  : <ChevronRight size={16} className="text-gray-500" />
+              )}
             </button>
+
             {sidebarOpen && expandedMenu === 'anggaran' && (
-              <div className="mt-1 ml-4 pl-4 border-l border-gray-700 space-y-1">
-                {[
-                  { path: '/anggaran/program', label: 'Input Program' }, 
-                  { path: '/anggaran/kegiatan', label: 'Input Kegiatan' }, 
-                  { path: '/anggaran/sub-kegiatan', label: 'Input Sub Kegiatan' }, 
-                  { path: '/anggaran/rekening', label: 'Input Rekening' },
-                  { path: '/anggaran/komparasi', label: 'Analisis Pergeseran' }
-                ].map((item) => (
-                  <NavLink key={item.path} to={item.path} className={({ isActive }) => `w-full block text-left py-2 px-3 rounded-md text-sm ${isActive ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-                    {item.label}
-                  </NavLink>
-                ))}
+              <div className="ml-4 pl-4 mt-1 border-l border-gray-700/50 space-y-1">
+                <NavLink to="/anggaran/program" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Input Program
+                </NavLink>
+                <NavLink to="/anggaran/kegiatan" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Input Kegiatan
+                </NavLink>
+                <NavLink to="/anggaran/sub-kegiatan" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Input Sub Kegiatan
+                </NavLink>
+                <NavLink to="/anggaran/rekening" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Input Rekening
+                </NavLink>
+                <NavLink to="/anggaran/komparasi" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Analisis Pergeseran
+                </NavLink>
               </div>
             )}
           </div>
-          <div className="pt-2">
-            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'wp' ? null : 'wp'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-all duration-300 hover-scale hover:bg-white/5">
-              <div className="flex items-center"><Users size={20} style={{ color: activePath.startsWith('/wp') ? theme.gold : '#9ca3af' }} className="shrink-0" />{sidebarOpen && <span className="ml-3 font-medium text-white">Wajib Pajak</span>}</div>
-              {sidebarOpen && (expandedMenu === 'wp' ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
+
+          {/* Wajib Pajak Section */}
+          <div className="pt-1">
+            <button
+              onClick={() => { if (!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'wp' ? null : 'wp'); }}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 hover:bg-white/5 text-gray-400 hover:text-white group"
+            >
+              <div className="flex items-center gap-3">
+                <Users size={20} className="shrink-0" />
+                {sidebarOpen && <span className="font-semibold text-sm">Wajib Pajak</span>}
+              </div>
+              {sidebarOpen && (
+                expandedMenu === 'wp'
+                  ? <ChevronDown size={16} className="text-gray-500" />
+                  : <ChevronRight size={16} className="text-gray-500" />
+              )}
             </button>
+
             {sidebarOpen && expandedMenu === 'wp' && (
-              <div className="mt-1 ml-4 pl-4 border-l border-gray-700 space-y-1">
-                {[
-                  { path: '/wp/asn', label: 'Data Pegawai ASN' }, 
-                  { path: '/wp/pribadi', label: 'Data WP Pribadi' }, 
-                  { path: '/wp/pihak-ketiga', label: 'Data WP Pihak Ketiga' }, 
-                  { path: '/wp/list', label: 'Lihat Semua Data' }
-                ].map((item) => (
-                  <NavLink key={item.path} to={item.path} className={({ isActive }) => `w-full block text-left py-2 px-3 rounded-md text-sm ${isActive ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-                    {item.label}
-                  </NavLink>
-                ))}
+              <div className="ml-4 pl-4 mt-1 border-l border-gray-700/50 space-y-1">
+                <NavLink to="/wp/asn" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Data Pegawai ASN
+                </NavLink>
+                <NavLink to="/wp/pribadi" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Data WP Pribadi
+                </NavLink>
+                <NavLink to="/wp/pihak-ketiga" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Data WP Pihak Ketiga
+                </NavLink>
+                <NavLink to="/wp/list" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Lihat Semua Data
+                </NavLink>
               </div>
             )}
           </div>
-          <div className="pt-2">
-            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'realisasi' ? null : 'realisasi'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-all duration-300 hover-scale hover:bg-white/5 group">
-              <div className="flex items-center">
-                <ReceiptText size={20} style={{ color: activePath.startsWith('/spj') ? theme.gold : '#9ca3af' }} className="shrink-0" />
-                {sidebarOpen && <span className="ml-3 font-medium text-white">Realisasi / SPJ</span>}
+
+          {/* Realisasi / SPJ Section */}
+          <div className="pt-1">
+            <button
+              onClick={() => { if (!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'realisasi' ? null : 'realisasi'); }}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 hover:bg-white/5 text-gray-400 hover:text-white group"
+            >
+              <div className="flex items-center gap-3">
+                <ReceiptText size={20} className="shrink-0" />
+                {sidebarOpen && <span className="font-semibold text-sm">Realisasi / SPJ</span>}
               </div>
-              {sidebarOpen && (expandedMenu === 'realisasi' ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
+              {sidebarOpen && (
+                expandedMenu === 'realisasi'
+                  ? <ChevronDown size={16} className="text-gray-500" />
+                  : <ChevronRight size={16} className="text-gray-500" />
+              )}
             </button>
+
             {sidebarOpen && expandedMenu === 'realisasi' && (
-              <div className="mt-1 ml-4 pl-4 border-l border-gray-700 space-y-1">
-                {[
-                  { path: '/spj/input', label: 'Input SPJ (GU)' },
-                  { path: '/spj/pengajuan', label: 'Pengajuan SPJ' },
-                  { path: '/spj/verifikasi', label: 'Verifikasi dan Cetak' }
-                ].map((item) => (
-                  <NavLink key={item.path} to={item.path} className={({ isActive }) => `w-full block text-left py-2 px-3 rounded-md text-sm ${isActive ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-                    {item.label}
-                  </NavLink>
-                ))}
+              <div className="ml-4 pl-4 mt-1 border-l border-gray-700/50 space-y-1">
+                <NavLink to="/spj/input" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Input SPJ (GU)
+                </NavLink>
+                <NavLink to="/spj/pengajuan" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Pengajuan SPJ
+                </NavLink>
+                <NavLink to="/spj/verifikasi" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Verifikasi dan Cetak
+                </NavLink>
               </div>
             )}
           </div>
-          <div className="pt-2">
-            <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'laporan' ? null : 'laporan'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-all duration-300 hover-scale hover:bg-white/5 group">
-              <div className="flex items-center">
-                <FileText size={20} style={{ color: activePath.startsWith('/laporan') ? theme.gold : '#9ca3af' }} className="shrink-0" />
-                {sidebarOpen && <span className="ml-3 font-medium text-white">Laporan</span>}
+
+          {/* Laporan Section */}
+          <div className="pt-1">
+            <button
+              onClick={() => { if (!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'laporan' ? null : 'laporan'); }}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 hover:bg-white/5 text-gray-400 hover:text-white group"
+            >
+              <div className="flex items-center gap-3">
+                <FileText size={20} className="shrink-0" />
+                {sidebarOpen && <span className="font-semibold text-sm">Laporan</span>}
               </div>
-              {sidebarOpen && (expandedMenu === 'laporan' ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />)}
+              {sidebarOpen && (
+                expandedMenu === 'laporan'
+                  ? <ChevronDown size={16} className="text-gray-500" />
+                  : <ChevronRight size={16} className="text-gray-500" />
+              )}
             </button>
+
             {sidebarOpen && expandedMenu === 'laporan' && (
-              <div className="mt-1 ml-4 pl-4 border-l border-gray-700 space-y-1">
-                {[
-                  { path: '/laporan/rekap-gu', label: 'Rekapitulasi GU' },
-                  { path: '/laporan/coretax', label: 'Laporan CoreTax' },
-                  { path: '/laporan/simdth', label: 'Laporan SIMDTH' }
-                ].map((item) => (
-                  <NavLink key={item.path} to={item.path} className={({isActive})=>`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${isActive ? 'bg-[#D4AF37] text-[#0A192F] shadow-lg shadow-[#D4AF37]/20 scale-105' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-                    <div className="w-1.5 h-1.5 rounded-full bg-current opacity-40"></div>
-                    {item.label}
-                  </NavLink>
-                ))}
+              <div className="ml-4 pl-4 mt-1 border-l border-gray-700/50 space-y-1">
+                <NavLink to="/laporan/rekap-gu" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Rekapitulasi GU
+                </NavLink>
+                <NavLink to="/laporan/coretax" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Laporan CoreTax
+                </NavLink>
+                <NavLink to="/laporan/simdth" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  Laporan SIMDTH
+                </NavLink>
               </div>
             )}
           </div>
 
           {/* Pengaturan - Hanya untuk Super Admin */}
           {user?.role === 'super_admin' && (
-            <div className="mt-6">
-              <p className="px-4 text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-3">Pengaturan</p>
-              <NavLink to="/pengaturan/users" className={({isActive})=>`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${isActive ? 'bg-[#D4AF37] text-[#0A192F] shadow-lg shadow-[#D4AF37]/20 scale-105' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-                <Users size={18} />
-                <span className="font-semibold">Manajemen User</span>
-              </NavLink>
-              <NavLink to="/pengaturan/shs" className={({isActive})=>`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${isActive ? 'bg-[#D4AF37] text-[#0A192F] shadow-lg shadow-[#D4AF37]/20 scale-105' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-                <FileSpreadsheet size={18} />
-                <span className="font-semibold">Standar Harga (SHS)</span>
-              </NavLink>
-              <NavLink to="/pengaturan/log" className={({isActive})=>`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${isActive ? 'bg-[#D4AF37] text-[#0A192F] shadow-lg shadow-[#D4AF37]/20 scale-105' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-                <History size={18} />
-                <span className="font-semibold">Log Aktivitas</span>
-              </NavLink>
-              <NavLink to="/pengaturan/tagging" className={({isActive})=>`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${isActive ? 'bg-[#D4AF37] text-[#0A192F] shadow-lg shadow-[#D4AF37]/20 scale-105' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-                <Tag size={18} />
-                <span className="font-semibold">Manajemen Tagging</span>
-              </NavLink>
+            <div className="pt-6 mt-4 border-t border-gray-700/30">
+              <p className={`px-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 ${!sidebarOpen && 'text-center'}`}>
+                {sidebarOpen ? 'Pengaturan' : '⚙️'}
+              </p>
+              <div className="space-y-1">
+                <NavLink to="/pengaturan/users" className={({ isActive }) => `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${isActive ? 'text-amber-400 bg-amber-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  <Settings size={18} />
+                  {sidebarOpen && <span className="text-sm font-medium">Manajemen User</span>}
+                </NavLink>
+                <NavLink to="/pengaturan/shs" className={({ isActive }) => `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${isActive ? 'text-amber-400 bg-amber-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  <FileSpreadsheet size={18} />
+                  {sidebarOpen && <span className="text-sm font-medium">Standar Harga (SHS)</span>}
+                </NavLink>
+                <NavLink to="/pengaturan/log" className={({ isActive }) => `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${isActive ? 'text-amber-400 bg-amber-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  <History size={18} />
+                  {sidebarOpen && <span className="text-sm font-medium">Log Aktivitas</span>}
+                </NavLink>
+                <NavLink to="/pengaturan/tagging" className={({ isActive }) => `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${isActive ? 'text-amber-400 bg-amber-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  <Tag size={18} />
+                  {sidebarOpen && <span className="text-sm font-medium">Manajemen Tagging</span>}
+                </NavLink>
+              </div>
             </div>
           )}
         </nav>
       </aside>
 
-      <main className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="bg-white shadow-sm h-16 flex items-center px-8 border-b border-gray-200 justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-lg font-bold text-[#0A192F] capitalize">
-              {location.pathname === '/' ? 'Dashboard' : location.pathname.split('/').filter(Boolean).join(' / ').replace(/-/g, ' ')}
-            </h1>
-            {isFetchingData && <span className="text-xs text-gray-400 animate-pulse">(Sinkronisasi...)</span>}
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-xs font-bold text-[#0A192F]">{user?.nama_lengkap || 'Operator SatuData'}</p>
-              <p className="text-[10px] text-gray-500 capitalize">{user?.role?.replace('_', ' ') || 'Dinas Tenaga Kerja'}</p>
+      {/* MAIN CONTENT */}
+      <main className="flex-1 flex flex-col overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+        {/* Header */}
+        <header className="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-10 border-b border-gray-200/60">
+          <div className="flex items-center justify-between px-8 py-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-gray-500 text-sm">
+                <span className="text-amber-600">📄</span>
+                <span className="font-mono text-xs uppercase tracking-wider">Disnaker</span>
+                <span className="text-gray-300">/</span>
+                <span className="font-semibold text-gray-700 capitalize">
+                  {getBreadcrumb(location.pathname)}
+                </span>
+              </div>
+              {isFetchingData && (
+                <div className="flex items-center gap-2 text-xs text-gray-400 animate-pulse">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full animate-ping" />
+                  Sinkronisasi...
+                </div>
+              )}
             </div>
-            <div className="w-10 h-10 bg-[#0A192F] rounded-full flex items-center justify-center text-white font-bold border-2 border-[#D4AF37]/30 shadow-inner">
-              {user?.username?.charAt(0).toUpperCase() || 'S'}
+            <div className="flex items-center gap-4">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-bold text-gray-800">{user?.nama_lengkap || 'Operator SatuData'}</p>
+                <p className="text-[11px] text-gray-500 capitalize">{user?.role?.replace('_', ' ') || 'Dinas Tenaga Kerja'}</p>
+              </div>
+              <div className="relative group">
+                <div className="w-10 h-10 bg-gradient-to-br from-gray-800 to-[#0A192F] rounded-full flex items-center justify-center text-white font-bold shadow-md ring-2 ring-amber-500/30 group-hover:ring-amber-500/50 transition-all">
+                  {user?.username?.charAt(0).toUpperCase() || 'S'}
+                </div>
+              </div>
+              <button
+                onClick={() => { logout(); navigate('/login'); }}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition-all duration-200 border border-rose-200 hover:border-rose-300"
+              >
+                <LogOut size={16} />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
             </div>
-            <button 
-              onClick={() => { logout(); navigate('/login'); }} 
-              className="ml-2 px-3 py-1.5 text-sm font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
-            >
-              Logout
-            </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-8">
-          <ErrorBoundary>
-            <div key={location.pathname} className="page-transition">
-              <Routes>
-                <Route path="/" element={<ProtectedRoute><DashboardView /></ProtectedRoute>} />
-                
-                <Route path="/anggaran">
-                  <Route path="program" element={<ProtectedRoute><FormProgram /></ProtectedRoute>} />
-                  <Route path="kegiatan" element={<ProtectedRoute><FormKegiatan /></ProtectedRoute>} />
-                  <Route path="sub-kegiatan" element={<ProtectedRoute><FormSubKegiatan /></ProtectedRoute>} />
-                  <Route path="rekening" element={<ProtectedRoute><FormRekening /></ProtectedRoute>} />
-                  <Route path="komparasi" element={<ProtectedRoute><KomparasiAnggaran /></ProtectedRoute>} />
-                </Route>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-8 py-6">
+            <ErrorBoundary>
+              <div key={location.pathname} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <Routes>
+                  <Route path="/" element={<ProtectedRoute><DashboardView /></ProtectedRoute>} />
 
-                <Route path="/wp">
-                  <Route path="asn" element={<ProtectedRoute><FormPegawaiASN /></ProtectedRoute>} />
-                  <Route path="pribadi" element={<ProtectedRoute><FormWPPribadi /></ProtectedRoute>} />
-                  <Route path="pihak-ketiga" element={<ProtectedRoute><FormWPPihakKetiga /></ProtectedRoute>} />
-                  <Route path="list" element={<ProtectedRoute><DaftarWajibPajak /></ProtectedRoute>} />
-                </Route>
-                
-                <Route path="/spj">
-                  <Route path="input" element={<ProtectedRoute><FormRealisasiGU /></ProtectedRoute>} />
-                  <Route path="pengajuan" element={<ProtectedRoute><FormCetakSPJ /></ProtectedRoute>} />
-                  <Route path="verifikasi" element={<ProtectedRoute><VerifikasiSPJ /></ProtectedRoute>} />
-                </Route>
-                
-                <Route path="/laporan">
-                  <Route path="rekap-gu" element={<ProtectedRoute><LaporanRekapGU /></ProtectedRoute>} />
-                  <Route path="coretax" element={<ProtectedRoute><LaporanCoreTax /></ProtectedRoute>} />
-                  <Route path="simdth" element={<ProtectedRoute><LaporanSIMDTH /></ProtectedRoute>} />
-                </Route>
+                  <Route path="/anggaran">
+                    <Route path="program" element={<ProtectedRoute><FormProgram /></ProtectedRoute>} />
+                    <Route path="kegiatan" element={<ProtectedRoute><FormKegiatan /></ProtectedRoute>} />
+                    <Route path="sub-kegiatan" element={<ProtectedRoute><FormSubKegiatan /></ProtectedRoute>} />
+                    <Route path="rekening" element={<ProtectedRoute><FormRekening /></ProtectedRoute>} />
+                    <Route path="komparasi" element={<ProtectedRoute><KomparasiAnggaran /></ProtectedRoute>} />
+                  </Route>
 
-                <Route path="/pengaturan">
-                  <Route path="users" element={<ProtectedRoute><ManajemenUser /></ProtectedRoute>} />
-                  <Route path="shs" element={<ProtectedRoute><StandarHarga /></ProtectedRoute>} />
-                  <Route path="log" element={<ProtectedRoute><LogAktivitas /></ProtectedRoute>} />
-                  <Route path="tagging" element={<ProtectedRoute><MasterTagging /></ProtectedRoute>} />
-                </Route>
+                  <Route path="/wp">
+                    <Route path="asn" element={<ProtectedRoute><FormPegawaiASN /></ProtectedRoute>} />
+                    <Route path="pribadi" element={<ProtectedRoute><FormWPPribadi /></ProtectedRoute>} />
+                    <Route path="pihak-ketiga" element={<ProtectedRoute><FormWPPihakKetiga /></ProtectedRoute>} />
+                    <Route path="list" element={<ProtectedRoute><DaftarWajibPajak /></ProtectedRoute>} />
+                  </Route>
 
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </div>
-          </ErrorBoundary>
+                  <Route path="/spj">
+                    <Route path="input" element={<ProtectedRoute><FormRealisasiGU /></ProtectedRoute>} />
+                    <Route path="pengajuan" element={<ProtectedRoute><FormCetakSPJ /></ProtectedRoute>} />
+                    <Route path="verifikasi" element={<ProtectedRoute><VerifikasiSPJ /></ProtectedRoute>} />
+                  </Route>
+
+                  <Route path="/laporan">
+                    <Route path="rekap-gu" element={<ProtectedRoute><LaporanRekapGU /></ProtectedRoute>} />
+                    <Route path="coretax" element={<ProtectedRoute><LaporanCoreTax /></ProtectedRoute>} />
+                    <Route path="simdth" element={<ProtectedRoute><LaporanSIMDTH /></ProtectedRoute>} />
+                  </Route>
+
+                  <Route path="/pengaturan">
+                    <Route path="users" element={<ProtectedRoute><ManajemenUser /></ProtectedRoute>} />
+                    <Route path="shs" element={<ProtectedRoute><StandarHarga /></ProtectedRoute>} />
+                    <Route path="log" element={<ProtectedRoute><LogAktivitas /></ProtectedRoute>} />
+                    <Route path="tagging" element={<ProtectedRoute><MasterTagging /></ProtectedRoute>} />
+                  </Route>
+
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </div>
+            </ErrorBoundary>
+          </div>
         </div>
 
-        {/* MODAL ERROR/LOADING/SUCCESS */}
+        {/* MODAL LOADING/SUCCESS/ERROR */}
         {modal.show && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-sm w-full text-center animate-in zoom-in-90 fade-in duration-300 ease-out sm:scale-100 border border-white/20">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-sm w-full text-center animate-in zoom-in-95 duration-300">
               {modal.status === 'loading' && (
                 <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 border-4 border-gray-100 border-t-[#D4AF37] rounded-full animate-spin mb-6"></div>
-                  <h3 className="text-xl font-bold text-[#0A192F]">SatuData Sedang Bekerja</h3>
-                  <p className="text-sm text-gray-500 mt-2 italic px-4">Mohon tunggu sebentar, data sedang diproses ke server...</p>
+                  <div className="w-16 h-16 border-4 border-gray-100 border-t-amber-600 rounded-full animate-spin mb-6"></div>
+                  <h3 className="text-xl font-bold text-gray-800">Memproses Data</h3>
+                  <p className="text-sm text-gray-500 mt-2">Mohon tunggu sebentar...</p>
                 </div>
               )}
               {modal.status === 'success' && (
                 <div className="animate-in zoom-in-50 duration-500">
-                  <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <CheckCircle2 size={48} className="text-green-500" />
+                  <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle2 size={48} className="text-emerald-500" />
                   </div>
-                  <h3 className="text-xl font-black text-[#0A192F]">Berhasil Tersimpan!</h3>
-                  <p className="text-sm text-gray-500 mt-3 bg-gray-50 p-3 rounded-lg border border-gray-100 italic">{modal.message}</p>
-                  <button onClick={() => setModal({show: false})} className="mt-8 px-6 py-3 text-white bg-[#0A192F] rounded-xl w-full font-bold shadow-lg shadow-[#0A192F]/20 hover:bg-[#122442] transition-all">Tutup Jendela</button>
+                  <h3 className="text-xl font-black text-gray-800">Berhasil!</h3>
+                  <p className="text-sm text-gray-500 mt-3 bg-gray-50 p-3 rounded-xl">{modal.message}</p>
+                  <button onClick={() => setModal({ show: false })} className="mt-8 px-6 py-3 bg-gray-900 text-white rounded-xl w-full font-bold shadow-lg hover:bg-gray-800 transition-all">
+                    Tutup
+                  </button>
                 </div>
               )}
               {modal.status === 'error' && (
                 <div className="animate-in zoom-in-50 duration-500">
-                  <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <AlertCircle size={48} className="text-red-500" />
+                  <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <AlertCircle size={48} className="text-rose-500" />
                   </div>
-                  <h3 className="text-xl font-black text-[#0A192F]">Ups, Terjadi Kendala</h3>
-                  <p className="text-sm text-gray-500 mt-3 bg-red-50/50 p-3 rounded-lg border border-red-100">{modal.message}</p>
-                  <button onClick={() => setModal({show: false})} className="mt-8 px-6 py-3 bg-red-600 text-white rounded-xl w-full font-bold shadow-lg shadow-red-200 hover:bg-red-700 transition-all">Pahami & Kembali</button>
+                  <h3 className="text-xl font-black text-gray-800">Terjadi Kesalahan</h3>
+                  <p className="text-sm text-gray-500 mt-3 bg-rose-50/50 p-3 rounded-xl border border-rose-100">{modal.message}</p>
+                  <button onClick={() => setModal({ show: false })} className="mt-8 px-6 py-3 bg-rose-600 text-white rounded-xl w-full font-bold shadow-lg hover:bg-rose-700 transition-all">
+                    Tutup
+                  </button>
                 </div>
               )}
             </div>
@@ -323,10 +434,10 @@ export default function App() {
 
         {/* TOAST NOTIFICATION */}
         {toast.show && (
-          <div className="absolute bottom-8 right-8 animate-in slide-in-from-bottom-8 duration-300 z-50">
-            <div className={`flex items-center gap-3 px-6 py-4 rounded-lg shadow-lg text-white ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
-              {toast.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
-              <span className="font-medium">{toast.message}</span>
+          <div className="fixed bottom-8 right-8 animate-in slide-in-from-bottom-8 duration-300 z-50">
+            <div className={`flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg text-white ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'}`}>
+              {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+              <span className="text-sm font-medium">{toast.message}</span>
             </div>
           </div>
         )}
