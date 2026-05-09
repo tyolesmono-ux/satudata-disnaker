@@ -10,7 +10,7 @@ export const FormRealisasiGU = () => {
   const {
     subKegiatans, rekenings, realisasiGU, setRealisasiGU,
     pegawaiASN, wpPribadi, wpPihakKetiga, showToast, kop21, kopUNI,
-    handleSaveData, modal
+    handleSaveData, buatSPJBundle, batchInsertRealisasi, modal, token
   } = useAppStore();
   
   const isLoading = modal.show && modal.status === 'loading';
@@ -95,9 +95,17 @@ export const FormRealisasiGU = () => {
   const { paguTotal, paguTersedia } = useMemo(() => {
     const rek = availableRekenings.find(r => String(r.kode_rekening) === String(formData.kode_rekening));
     const total = rek ? Number(rek.pagu) : 0;
-    const terpakai = (realisasiGU || []).filter(r => String(r.tahun_anggaran) === String(formData.tahun_anggaran) && String(r.tahap_anggaran) === String(formData.tahap_anggaran) && String(r.kode_rekening) === String(formData.kode_rekening)).reduce((sum, r) => sum + Number(r.nominal_nota || 0), 0);
+    const realData = Array.isArray(realisasiGU) ? realisasiGU : [];
+    
+    const terpakai = realData.filter(r => 
+      String(r.tahun_anggaran) === String(formData.tahun_anggaran) && 
+      String(r.tahap_anggaran) === String(formData.tahap_anggaran) && 
+      String(r.kode_subkegiatan) === String(formData.kode_subkegiatan) && 
+      String(r.kode_rekening) === String(formData.kode_rekening)
+    ).reduce((sum, r) => sum + Number(r.nominal_nota || 0), 0);
+    
     return { paguTotal: total, paguTersedia: total - terpakai };
-  }, [availableRekenings, formData.kode_rekening, formData.tahun_anggaran, formData.tahap_anggaran, realisasiGU]);
+  }, [availableRekenings, formData.kode_rekening, formData.tahun_anggaran, formData.tahap_anggaran, realisasiGU, formData.kode_subkegiatan]);
 
   const handleKategoriChange = (newKategori) => {
     const newData = calculateTaxes(formData.nominal_nota, newKategori, { ...formData, kop_pajak: '' });
@@ -236,18 +244,15 @@ export const FormRealisasiGU = () => {
       };
     });
 
-    try {
-      const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'batch_insert_realisasi', payload: { items } }) });
-      const result = await response.json();
-      if (result.status === 'success') {
-        showToast(`${items.length} nota PPh21 berhasil disimpan!`, 'success');
-        const newEntries = items.map((item, idx) => ({ ...item, id_nota: result.results[idx].id_nota, timestamp: result.results[idx].timestamp, status_nota: 'Draft', status_spj: 'Draft', id_spj: '' }));
-        setRealisasiGU(prev => [...prev, ...newEntries]);
-        setMasalChecked(new Set()); setMasalNominal(''); setMasalNominals({}); setMasalSearch('');
-        setFormData(prev => ({ ...prev, keterangan_nota: '', tanggal_nota: '' }));
-      } else { showToast('Gagal: ' + result.message, 'error'); }
-    } catch (e) { showToast('Error: ' + e.message, 'error'); }
-    finally { setIsMasalSubmitting(false); }
+    const success = await batchInsertRealisasi(items);
+    if (success) {
+      setMasalChecked(new Set()); 
+      setMasalNominal(''); 
+      setMasalNominals({}); 
+      setMasalSearch('');
+      setFormData(prev => ({ ...prev, keterangan_nota: '', tanggal_nota: '' }));
+    }
+    setIsMasalSubmitting(false);
   };
 
   // ============================================================
@@ -535,7 +540,7 @@ export const FormCetakSPJ = () => {
   const {
     rekenings, subKegiatans, kegiatans, realisasiGU, setRealisasiGU,
     dataSPJ, setDataSPJ, pegawaiASN, setPrintData,
-    printedNotes, setPrintedNotes, handleUpdateData, modal, showToast
+    printedNotes, setPrintedNotes, handleUpdateData, buatSPJBundle, modal, showToast, token
   } = useAppStore();
 
   const isLoading = modal.show && modal.status === 'loading';
@@ -552,7 +557,8 @@ export const FormCetakSPJ = () => {
 
   const availableNotes = useMemo(() => {
     if (!filter.kode_rekening) return [];
-    return (realisasiGU || []).filter(r =>
+    const realData = Array.isArray(realisasiGU) ? realisasiGU : [];
+    return realData.filter(r =>
       String(r.tahun_anggaran) === String(filter.tahun_anggaran) &&
       String(r.tahap_anggaran) === String(filter.tahap_anggaran) &&
       String(r.bulan_spj) === String(filter.bulan_spj) &&
@@ -584,64 +590,25 @@ export const FormCetakSPJ = () => {
     const totalPph22 = selectedNotaData.reduce((sum, n) => sum + Number(n.pph22 || 0), 0);
     const totalPph23 = selectedNotaData.reduce((sum, n) => sum + Number(n.pph23 || 0), 0);
 
-    const payloadData = {
-      action: 'buat_spj_bundle',
-      payload: {
-        id_spj: temporaryIdSpj,
-        bidang: inputBidang,
-        tanggal_bayar: '',
-        proses_gu: filter.proses_gu,
-        total_kotor: totalKotor,
-        total_ppn: totalPpn,
-        total_pph21: totalPph21,
-        total_pph22: totalPph22,
-        total_pph23: totalPph23,
-        id_nota: selectedNotaData.map(n => n.id_nota)
-      }
-    };
+    const success = await buatSPJBundle({
+      id_spj: temporaryIdSpj,
+      bidang: inputBidang,
+      tanggal_bayar: '',
+      proses_gu: filter.proses_gu,
+      total_kotor: totalKotor,
+      total_ppn: totalPpn,
+      total_pph21: totalPph21,
+      total_pph22: totalPph22,
+      total_pph23: totalPph23,
+      id_nota: selectedNotaData.map(n => n.id_nota)
+    });
 
-    try {
-      const response = await fetch(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify(payloadData),
-      });
-      const result = await response.json();
-      if (result.status === 'success') {
-        showToast('Berhasil membuat bundle SPJ!', 'success');
-        setShowModalBidang(false);
-        setSelectedNotes([]);
-        setInputBidang('');
-
-        // Update state lokal — nota yang dipilih jadi 'Diproses'
-        const selectedIdNotas = selectedNotaData.map(n => String(n.id_nota));
-        setRealisasiGU(prev => prev.map(n =>
-          selectedIdNotas.includes(String(n.id_nota))
-            ? { ...n, status_nota: 'Diproses', status_spj: 'Diproses', id_spj: temporaryIdSpj }
-            : n
-        ));
-
-        // Tambahkan SPJ baru ke dataSPJ
-        setDataSPJ(prev => [...prev, {
-          id_spj: temporaryIdSpj,
-          no_spj_resmi: '',
-          bidang: inputBidang,
-          tanggal_bayar: '',
-          proses_gu: filter.proses_gu,
-          total_kotor: totalKotor,
-          total_ppn: totalPpn,
-          total_pph21: totalPph21,
-          total_pph22: totalPph22,
-          total_pph23: totalPph23,
-          status_spj: 'Diproses'
-        }]);
-      } else {
-        showToast('Gagal: ' + result.message, 'error');
-      }
-    } catch (e) {
-      showToast('Terjadi kesalahan: ' + e.message, 'error');
-    } finally {
-      setIsSubmitting(false);
+    if (success) {
+      setShowModalBidang(false);
+      setSelectedNotes([]);
+      setInputBidang('');
     }
+    setIsSubmitting(false);
   };
 
   return (
@@ -656,8 +623,25 @@ export const FormCetakSPJ = () => {
         </SelectField>
         <SelectField label="Bulan SPJ" value={filter.bulan_spj} onChange={e => setFilter({ ...filter, bulan_spj: e.target.value })}><option value="">-- Pilih Bulan --</option>{['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(b => <option key={b} value={b}>{b}</option>)}</SelectField>
         <SelectField label="Proses GU" value={filter.proses_gu} onChange={e => setFilter({ ...filter, proses_gu: e.target.value })}>{guOptions.map(gu => <option key={gu} value={gu}>{gu}</option>)}</SelectField>
-        <div className="md:col-span-2"><SelectField label="Sub Kegiatan" value={filter.kode_subkegiatan} onChange={e => setFilter({ ...filter, kode_subkegiatan: e.target.value, kode_rekening: '' })}><option value="">-- Pilih Sub Kegiatan --</option>{(subKegiatans || []).map(s => <option key={s.kode_subkegiatan} value={s.kode_subkegiatan}>[{s.kode_subkegiatan}] {s.nama_subkegiatan}</option>)}</SelectField></div>
-        <div className="md:col-span-2"><SelectField label="Rekening Belanja" value={filter.kode_rekening} onChange={e => setFilter({ ...filter, kode_rekening: e.target.value })} disabled={!filter.kode_subkegiatan}><option value="">-- Pilih Rekening --</option>{(availableRekenings || []).map(r => <option key={r.kode_rekening} value={r.kode_rekening}>[{r.kode_rekening}] {r.nama_rekening}</option>)}</SelectField></div>
+        <div className="md:col-span-2">
+          <SearchableSelect 
+            label="Sub Kegiatan" 
+            value={filter.kode_subkegiatan} 
+            onChange={val => setFilter({ ...filter, kode_subkegiatan: val, kode_rekening: '' })}
+            options={(subKegiatans || []).map(s => ({ value: s.kode_subkegiatan, label: `[${s.kode_subkegiatan}] ${s.nama_subkegiatan}` }))}
+            placeholder="Pilih Sub Kegiatan..."
+          />
+        </div>
+        <div className="md:col-span-2">
+          <SearchableSelect 
+            label="Rekening Belanja" 
+            value={filter.kode_rekening} 
+            onChange={val => setFilter({ ...filter, kode_rekening: val })}
+            disabled={!filter.kode_subkegiatan}
+            options={(availableRekenings || []).map(r => ({ value: r.kode_rekening, label: `[${r.kode_rekening}] ${r.nama_rekening}` }))}
+            placeholder="Pilih Rekening..."
+          />
+        </div>
       </div>
 
       {filter.kode_rekening && (

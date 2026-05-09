@@ -120,13 +120,17 @@ export default function DashboardView() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h2 className="text-2xl font-bold" style={{ color: theme.navy }}>Dashboard Anggaran</h2>
-        <div className="flex gap-2 bg-white p-2 rounded-lg border shadow-sm">
-          <select value={dashTahun} onChange={e => setDashTahun(e.target.value)} className="px-3 py-1.5 border-r focus:ring-0 outline-none text-sm font-semibold text-gray-700 cursor-pointer bg-transparent">
-            {availableTahun.map(y => <option key={y} value={y}>Tahun {y}</option>)}
-          </select>
-          <select value={dashTahap} onChange={e => setDashTahap(e.target.value)} className="px-3 py-1.5 focus:ring-0 outline-none text-sm font-semibold text-gray-700 cursor-pointer bg-transparent">
-            {availableTahap.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+        <div className="flex gap-4">
+          <div className="w-40">
+            <SelectField value={dashTahun} onChange={e => setDashTahun(e.target.value)}>
+              {availableTahun.map(y => <option key={y} value={y}>Tahun {y}</option>)}
+            </SelectField>
+          </div>
+          <div className="w-48">
+            <SelectField value={dashTahap} onChange={e => setDashTahap(e.target.value)}>
+              {availableTahap.map(t => <option key={t} value={t}>{t}</option>)}
+            </SelectField>
+          </div>
         </div>
       </div>
       

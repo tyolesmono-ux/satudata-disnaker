@@ -1,7 +1,7 @@
 // File: src/components/SharedUI.jsx
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Save, ChevronDown, Lock } from 'lucide-react';
+import { Save, ChevronDown, Lock, Search, X } from 'lucide-react';
 import { theme } from '../config/constants';
 import { useAppStore } from '../store/useAppStore';
 
@@ -51,19 +51,15 @@ export const InputField = ({ label, className, ...props }) => (
   </div>
 );
 
-export const SelectField = ({ label, children, ...props }) => (
-  <div className="group">
-    <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors duration-300 group-focus-within:text-[#0A192F]">{label}</label>
-    <select className="w-full px-4 py-2.5 bg-gray-50/50 border rounded-lg focus:ring-4 outline-none transition-all duration-300 hover:border-gray-300 border-gray-200 focus:bg-white focus:ring-[#D4AF37]/30 focus:border-[#0A192F] shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed" {...props}>
-      {children}
-    </select>
-  </div>
-);
-
-export const SearchableSelect = ({ label, options = [], value, onChange, placeholder }) => {
+// ==========================================
+// PREMIUM GLASSMORPHISM SELECT COMPONENT
+// ==========================================
+const PremiumDropdown = ({ label, options, value, onChange, placeholder, required, disabled, isSearchableSelectApi }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef(null);
+  const listRef = useRef(null);
 
   const safeOptions = useMemo(() => Array.isArray(options) ? options : [], [options]);
 
@@ -75,68 +71,162 @@ export const SearchableSelect = ({ label, options = [], value, onChange, placeho
     );
   }, [safeOptions, searchTerm]);
 
-  const selectedOption = useMemo(() => safeOptions.find(opt => opt.value === value), [safeOptions, value]);
+  const selectedOption = useMemo(() => safeOptions.find(opt => String(opt.value) === String(value)), [safeOptions, value]);
 
-  useEffect(() => {
-    // Sync searchTerm with value only when NOT open
+  // Handle Keyboard Navigation
+  const handleKeyDown = (e) => {
     if (!isOpen) {
-      if (selectedOption) setSearchTerm(selectedOption.label);
-      else if (!value) setSearchTerm('');
+      if (e.key === 'Enter' || e.key === 'ArrowDown') setIsOpen(true);
+      return;
     }
-  }, [selectedOption, value, isOpen]);
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex(prev => (prev < filteredOptions.length - 1 ? prev + 1 : prev));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex(prev => (prev > 0 ? prev - 1 : prev));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightedIndex >= 0 && filteredOptions[highlightedIndex]) {
+        handleSelect(filteredOptions[highlightedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
+  };
+
+  // Auto-scroll to highlighted item
+  useEffect(() => {
+    if (highlightedIndex >= 0 && listRef.current) {
+      const el = listRef.current.children[highlightedIndex];
+      if (el) el.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedIndex]);
+
+  // Reset highlight when searching or opening
+  useEffect(() => {
+    setHighlightedIndex(filteredOptions.length > 0 ? 0 : -1);
+  }, [searchTerm, isOpen]);
+
+  // Click outside listener
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelect = (opt) => {
+    if (isSearchableSelectApi) onChange(opt.value);
+    else onChange({ target: { value: opt.value } }); // Simulate native event
+    setSearchTerm('');
+    setIsOpen(false);
+  };
+
+  const handleClear = (e) => {
+    e.stopPropagation();
+    if (isSearchableSelectApi) onChange('');
+    else onChange({ target: { value: '' } });
+    setSearchTerm('');
+    setIsOpen(false);
+  };
 
   return (
-    <div className="group relative" ref={containerRef}>
-      <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors duration-300 group-focus-within:text-[#0A192F]">{label}</label>
-      <div className="relative">
-        <input 
-          type="text"
-          value={searchTerm}
-          className="w-full px-4 py-2.5 bg-gray-50/50 border rounded-lg focus:ring-4 outline-none transition-all duration-300 hover:border-gray-300 border-gray-200 focus:bg-white focus:ring-[#D4AF37]/30 focus:border-[#0A192F] shadow-sm"
-          placeholder={placeholder}
-          onFocus={() => {
-            setSearchTerm(''); // Clear on focus per request
-            setIsOpen(true);
-          }}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setIsOpen(true);
-            if (!e.target.value) onChange('');
-          }}
-          onBlur={() => {
-            // Delay to let onMouseDown fires
-            setTimeout(() => {
-              setIsOpen(false);
-              // Restore if nothing selected
-              if (selectedOption) setSearchTerm(selectedOption.label);
-              else if (!value) setSearchTerm('');
-            }, 200);
-          }}
-        />
-        <ChevronDown size={18} className={`absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+    <div className="group relative" ref={containerRef} onKeyDown={handleKeyDown}>
+      {label && (
+        <label className="block text-sm font-semibold text-gray-700 mb-2 transition-colors duration-300 group-focus-within:text-[#0A192F]">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
+      
+      {/* Hidden native select for HTML5 Form Validation */}
+      <select value={value || ''} onChange={() => {}} className="absolute opacity-0 w-full h-0 pointer-events-none" required={required} disabled={disabled}>
+        <option value={value || ''}>{value}</option>
+      </select>
+
+      <div 
+        className={`relative w-full px-4 py-3 bg-white/50 backdrop-blur-md border rounded-xl flex items-center justify-between cursor-pointer transition-all duration-300 ${disabled ? 'bg-gray-100/50 opacity-70 cursor-not-allowed border-gray-200' : isOpen ? 'border-[#0A192F] ring-4 ring-[#D4AF37]/20 bg-white shadow-lg' : 'border-gray-200 hover:border-[#D4AF37] hover:shadow-md'}`}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        tabIndex={disabled ? -1 : 0}
+      >
+        <div className={`truncate ${!selectedOption ? 'text-gray-400' : 'text-[#0A192F] font-semibold'}`}>
+          {selectedOption ? selectedOption.label : (placeholder || '-- Pilih --')}
+        </div>
+        <div className="flex items-center gap-2">
+          {selectedOption && !disabled && !required && (
+             <div onClick={handleClear} className="p-1 hover:bg-red-50 rounded-full text-gray-300 hover:text-red-500 transition-colors">
+               <X size={14} />
+             </div>
+          )}
+          <ChevronDown size={18} className={`text-[#D4AF37] transition-transform duration-300 ${isOpen ? 'rotate-180 text-[#0A192F]' : ''}`} />
+        </div>
       </div>
 
       {isOpen && (
-        <ul className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-auto animate-in fade-in zoom-in-95 duration-200 ring-1 ring-black/5">
-          {filteredOptions.length === 0 ? (
-            <li className="px-4 py-3 text-sm text-gray-500 italic">Data tidak ditemukan</li>
-          ) : (
-            filteredOptions.map((opt, idx) => (
-              <li 
-                key={idx}
-                onMouseDown={() => {
-                  onChange(opt.value);
-                  setSearchTerm(opt.label);
-                  setIsOpen(false);
-                }}
-                className={`px-4 py-2.5 text-sm cursor-pointer border-b last:border-0 transition-colors ${opt.value === value ? 'bg-blue-50 text-[#0A192F] font-bold' : 'hover:bg-gray-50 text-gray-700'}`}
-              >
-                {opt.label}
+        <div className="absolute z-[100] w-full mt-2 bg-white/95 backdrop-blur-xl border border-gray-100 rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
+          <div className="p-3 border-b border-gray-50 bg-gray-50/50 sticky top-0 backdrop-blur-md z-10">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                type="text"
+                autoFocus
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#0A192F] transition-all font-medium"
+                placeholder="Ketik untuk mencari..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+          <ul ref={listRef} className="max-h-64 overflow-y-auto custom-scrollbar p-2 space-y-0.5">
+            {filteredOptions.length === 0 ? (
+              <li className="px-4 py-8 text-sm text-center text-gray-400 flex flex-col items-center gap-3">
+                <span className="text-3xl opacity-50">🔍</span>
+                <p>Data tidak ditemukan</p>
               </li>
-            ))
-          )}
-        </ul>
+            ) : (
+              filteredOptions.map((opt, idx) => {
+                const isSelected = String(opt.value) === String(value);
+                const isHighlighted = idx === highlightedIndex;
+                return (
+                  <li 
+                    key={idx}
+                    onClick={() => handleSelect(opt)}
+                    onMouseEnter={() => setHighlightedIndex(idx)}
+                    className={`px-4 py-3 text-sm cursor-pointer rounded-xl transition-all flex items-center justify-between group ${isSelected ? 'bg-[#0A192F] text-[#D4AF37] shadow-md' : isHighlighted ? 'bg-blue-50 text-[#0A192F]' : 'hover:bg-blue-50/50 text-gray-700 hover:text-[#0A192F]'}`}
+                  >
+                    <span className="truncate">{opt.label}</span>
+                    {isSelected && <div className="w-2 h-2 rounded-full bg-[#D4AF37] animate-in zoom-in duration-300"></div>}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
       )}
     </div>
   );
 };
+
+// ==========================================
+// DROP-IN REPLACEMENT ADAPTERS
+// ==========================================
+export const SelectField = ({ label, children, ...props }) => {
+  // Convert native <option> elements to custom options array
+  const options = React.Children.toArray(children).map(child => {
+    if (React.isValidElement(child) && child.type === 'option') {
+      return { value: child.props.value, label: child.props.children };
+    }
+    return null;
+  }).filter(Boolean);
+
+  return <PremiumDropdown label={label} options={options} {...props} isSearchableSelectApi={false} />;
+};
+
+export const SearchableSelect = ({ label, options, ...props }) => {
+  return <PremiumDropdown label={label} options={options} {...props} isSearchableSelectApi={true} />;
+};

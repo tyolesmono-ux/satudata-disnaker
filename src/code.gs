@@ -75,6 +75,28 @@ function verifyJWT(token) {
   return false;
 }
 
+// ==========================================
+// UTILS AUDIT LOG
+// ==========================================
+function recordAuditLog(username, role, action, module, details) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('AuditLog');
+    if (!sheet) {
+      sheet = ss.insertSheet('AuditLog');
+      sheet.appendRow(['timestamp', 'username', 'role', 'action', 'module', 'details']);
+      // Bekukan baris pertama
+      sheet.setFrozenRows(1);
+      sheet.getRange("A1:F1").setFontWeight("bold").setBackground("#f3f3f3");
+    }
+    
+    var logDetails = (typeof details === 'object') ? JSON.stringify(details) : String(details);
+    sheet.appendRow([new Date(), username, role, action, module, logDetails]);
+  } catch(e) {
+    Logger.log("Gagal merekam audit log: " + e.message);
+  }
+}
+
 function doGet(e) {
   return createJsonResponse({ status: 'error', message: 'Endpoint doGet kini dibatasi. Gunakan POST untuk akses data.' });
 }
@@ -98,9 +120,11 @@ function doPost(e) {
       for (var i = 1; i < data.length; i++) {
         if (data[i][userIdx] === username && data[i][passIdx] === inputHash) {
           var userObj = { username: data[i][userIdx], role: data[i][headers.indexOf('role')], nama_lengkap: data[i][headers.indexOf('nama_lengkap')] };
+          recordAuditLog(username, userObj.role, 'LOGIN', 'Auth', 'User berhasil login');
           return createJsonResponse({ status: 'success', data: { token: generateJWT(userObj), user: userObj } });
         }
       }
+      recordAuditLog(username, 'unknown', 'LOGIN_FAILED', 'Auth', 'Percobaan login gagal (password salah)');
       return createJsonResponse({ status: 'error', message: 'Username atau password salah.' });
     }
 
@@ -110,11 +134,30 @@ function doPost(e) {
       return createJsonResponse({ status: 'error', message: 'Unauthorized: Sesi berakhir, silakan login kembali.' });
     }
 
-    // 3. ACTION MANAGEMENT USER (Hanya Super Admin)
-    if (action === 'getUsers' || action === 'addUser' || action === 'deleteUser') {
-      if (user.role !== 'super_admin') return createJsonResponse({ status: 'error', message: 'Akses Ditolak: Hanya Super Admin yang boleh mengelola user.' });
+    // 3. ACTION MANAGEMENT USER & AUDIT LOG (Hanya Super Admin)
+    if (action === 'getUsers' || action === 'addUser' || action === 'deleteUser' || action === 'getAuditLogs') {
+      if (user.role !== 'super_admin') return createJsonResponse({ status: 'error', message: 'Akses Ditolak: Hanya Super Admin yang boleh mengakses modul ini.' });
       
       var ss = SpreadsheetApp.getActiveSpreadsheet();
+      
+      if (action === 'getAuditLogs') {
+        var logSheet = ss.getSheetByName('AuditLog');
+        if (!logSheet) return createJsonResponse({ status: 'success', data: [] });
+        var logData = logSheet.getDataRange().getValues();
+        var logs = [];
+        for (var i = 1; i < logData.length; i++) {
+          logs.push({
+            timestamp: logData[i][0],
+            username: logData[i][1],
+            role: logData[i][2],
+            action: logData[i][3],
+            module: logData[i][4],
+            details: logData[i][5]
+          });
+        }
+        return createJsonResponse({ status: 'success', data: logs.reverse() }); // Terbaru di atas
+      }
+
       var sheet = ss.getSheetByName('Users');
       
       if (action === 'getUsers') {
@@ -135,6 +178,7 @@ function doPost(e) {
         var p = requestData.payload;
         var hash = hashPassword(p.password);
         sheet.appendRow([p.username, hash, p.role, p.nama_lengkap]);
+        recordAuditLog(user.username, user.role, 'ADD_USER', 'User Management', 'Menambahkan user: ' + p.username);
         return createJsonResponse({ status: 'success', message: 'User berhasil ditambahkan' });
       }
 
@@ -145,6 +189,7 @@ function doPost(e) {
         for (var i = 1; i < data.length; i++) {
           if (data[i][0] === usernameToDelete) {
             sheet.deleteRow(i + 1);
+            recordAuditLog(user.username, user.role, 'DELETE_USER', 'User Management', 'Menghapus user: ' + usernameToDelete);
             return createJsonResponse({ status: 'success', message: 'User berhasil dihapus' });
           }
         }
@@ -218,10 +263,12 @@ function doPost(e) {
       // Untuk RealisasiGU, return lebih awal dengan id_nota & timestamp yang digenerate backend
       if (sheetName === 'RealisasiGU') {
         sheet.appendRow(rowData);
+        recordAuditLog(user.username, user.role, 'INSERT', sheetName, 'Input SPJ Baru: ' + idNota);
         return createJsonResponse({ status: 'success', message: 'Data berhasil disimpan!', id_nota: idNota, timestamp: String(tsUnique) });
       }
       
       sheet.appendRow(rowData);
+      recordAuditLog(user.username, user.role, 'INSERT', sheetName, 'Menambahkan data baru');
       return createJsonResponse({ status: 'success', message: 'Data berhasil disimpan!' });
     }
 
@@ -259,6 +306,7 @@ function doPost(e) {
         Utilities.sleep(50);
       }
       
+      recordAuditLog(user.username, user.role, 'BATCH_INSERT', 'RealisasiGU', 'Input masal ' + items.length + ' PPh21');
       return createJsonResponse({ status: 'success', message: items.length + ' nota berhasil disimpan!', results: results });
     }
 
@@ -327,6 +375,7 @@ function doPost(e) {
         processed++;
       });
       
+      recordAuditLog(user.username, user.role, 'IMPORT', 'Rekening', 'Import/Update ' + processed + ' Kertas Kerja');
       return createJsonResponse({ status: 'success', message: `${processed} data anggaran berhasil diproses!`, count: processed });
     }
 
@@ -371,6 +420,7 @@ function doPost(e) {
           }
         }
       }
+      recordAuditLog(user.username, user.role, 'CREATE_BUNDLE', 'DataSPJ', 'Buat Bundle SPJ: ' + payload.id_spj);
       return createJsonResponse({ status: 'success', message: 'SPJ Bundle berhasil dibuat' });
     }
 
@@ -468,6 +518,7 @@ function doPost(e) {
           }
         }
       }
+      recordAuditLog(user.username, user.role, 'VERIFY_SPJ', 'DataSPJ', 'Input Pajak & Validasi SPJ: ' + nomorResmi);
       return createJsonResponse({ status: 'success', message: 'Pajak SPJ berhasil diupdate', no_spj_resmi: nomorResmi });
     }
 

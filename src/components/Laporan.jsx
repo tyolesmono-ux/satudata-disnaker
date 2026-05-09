@@ -28,7 +28,8 @@ export const LaporanRekapGU = () => {
   guOptions.push('GU-Nihil');
 
   const reportData = useMemo(() => {
-    const filtered = realisasiGU.filter(r => 
+    const dataRealisasi = Array.isArray(realisasiGU) ? realisasiGU : [];
+    const filtered = dataRealisasi.filter(r => 
       String(r.tahun_anggaran) === filterTahun && 
       String(r.tahap_anggaran) === filterTahap && 
       r.proses_gu === filterGU && 
@@ -90,7 +91,7 @@ export const LaporanRekapGU = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border">
         <SelectField label="Tahun" value={filterTahun} onChange={e => setFilterTahun(e.target.value)}>
-          {Array.from(new Set(rekenings.map(r => String(r.tahun_anggaran)))).sort((a,b) => b-a).map(y => <option key={y} value={y}>{y}</option>)}
+          {Array.from(new Set((Array.isArray(rekenings) ? rekenings : []).map(r => String(r.tahun_anggaran)))).sort((a,b) => b-a).map(y => <option key={y} value={y}>{y}</option>)}
         </SelectField>
         <SelectField label="Tahap" value={filterTahap} onChange={e => setFilterTahap(e.target.value)}>
           <option value="APBD">APBD</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Pergeseran 2">Pergeseran 2</option><option value="Perubahan">Perubahan (PAK)</option>
@@ -163,7 +164,8 @@ export const LaporanCoreTax = () => {
   const [jenisPajak, setJenisPajak] = useState('BPU'); // BPU, BP21, PPN
 
   const filteredData = useMemo(() => {
-    return realisasiGU.filter(r => {
+    const dataRealisasi = Array.isArray(realisasiGU) ? realisasiGU : [];
+    return dataRealisasi.filter(r => {
       if (r.status_nota === 'Ditolak') return false;
       if (jenisPajak === 'BPU') return Number(r.pph22) > 0 || Number(r.pph23) > 0;
       if (jenisPajak === 'BP21') return Number(r.pph21) > 0;
@@ -242,7 +244,7 @@ export const LaporanCoreTax = () => {
                   <tr key={i} className="hover:bg-gray-50">
                     <td className="p-3 whitespace-nowrap">{formatTanggal(r.tanggal_nota)}</td>
                     <td className="p-3">{r.nama_vendor}</td>
-                    <td className="p-3 text-xs">{r.nik_vendor}</td>
+                    <td className="p-3 text-sm">{r.nik_vendor}</td>
                     <td className="p-3 text-right">{formatRupiah(r.nominal_nota)}</td>
                     <td className="p-3 text-center">{r.kop_pajak || '-'}</td>
                     <td className="p-3 text-center">{r.kap_pajak || '-'}</td>
@@ -263,7 +265,7 @@ export const LaporanSIMDTH = () => {
   const { dataSPJ } = useAppStore();
   const tableData = useMemo(() => {
     const list = [];
-    const validSPJs = dataSPJ.filter(s => s.status_spj === 'Valid');
+    const validSPJs = (Array.isArray(dataSPJ) ? dataSPJ : []).filter(s => s.status_spj === 'Valid');
     
     validSPJs.forEach(spj => {
       // Parse array tax from valid SPJ

@@ -30,6 +30,7 @@ export const useAppStore = create((set, get) => ({
   token: localStorage.getItem('satuData_token') || null,
   user: JSON.parse(localStorage.getItem('satuData_user')) || null,
   appUsers: [],
+  auditLogs: [],
 
   // --- UI ACTIONS ---
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -131,6 +132,62 @@ export const useAppStore = create((set, get) => ({
     } catch (err) { set({ modal: { show: true, status: 'error', message: 'Koneksi gagal' } }); }
   },
 
+  fetchAuditLogs: async () => {
+    const token = get().token;
+    if (!token) return;
+    try {
+      const response = await fetchWithTimeout(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'getAuditLogs', token }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+      const result = await response.json();
+      if (result.status === 'success') set({ auditLogs: result.data });
+    } catch (err) { console.error('Gagal fetch audit logs', err); }
+  },
+
+  buatSPJBundle: async (payload) => {
+    set({ modal: { show: true, status: 'loading', message: 'Sedang memproses pengajuan SPJ...' } });
+    try {
+      const token = get().token;
+      const response = await fetchWithTimeout(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'buat_spj_bundle', payload, token }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        get().showToast('Berhasil membuat bundle SPJ!', 'success');
+        await get().fetchAllData(); // Sync total
+        set({ modal: { show: false, status: 'loading', message: '' } });
+        return true;
+      }
+      set({ modal: { show: true, status: 'error', message: result.message } });
+    } catch (err) { set({ modal: { show: true, status: 'error', message: 'Koneksi gagal' } }); }
+    return false;
+  },
+
+  batchInsertRealisasi: async (items) => {
+    set({ modal: { show: true, status: 'loading', message: `Sedang menyimpan ${items.length} nota...` } });
+    try {
+      const token = get().token;
+      const response = await fetchWithTimeout(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'batch_insert_realisasi', payload: { items }, token }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+      const result = await response.json();
+      if (result.status === 'success') {
+        get().showToast(`${items.length} nota berhasil disimpan!`, 'success');
+        await get().fetchAllData(); // Sync total
+        set({ modal: { show: false, status: 'loading', message: '' } });
+        return true;
+      }
+      set({ modal: { show: true, status: 'error', message: result.message } });
+    } catch (err) { set({ modal: { show: true, status: 'error', message: 'Koneksi gagal' } }); }
+    return false;
+  },
+
   fetchAllData: async () => {
     if (!GAS_URL) return;
     const token = get().token;
@@ -230,6 +287,7 @@ export const useAppStore = create((set, get) => ({
       }
       
       set({ ...updateState, modal: { show: true, status: 'success', message: `Data ${sheetName} berhasil disimpan!` } });
+      get().fetchAllData(); // Background sync
       return true; 
     } catch (error) {
       set({ modal: { show: true, status: 'error', message: `Gagal: ${error.message}` } });
@@ -263,7 +321,14 @@ export const useAppStore = create((set, get) => ({
   },
 
   // Manual setters for complex updates in components
-  setRealisasiGU: (data) => set({ realisasiGU: data }),
-  setDataSPJ: (data) => set({ dataSPJ: data }),
+  // Manual setters with functional update support
+  setRealisasiGU: (data) => {
+    if (typeof data === 'function') set((state) => ({ realisasiGU: data(state.realisasiGU) }));
+    else set({ realisasiGU: data });
+  },
+  setDataSPJ: (data) => {
+    if (typeof data === 'function') set((state) => ({ dataSPJ: data(state.dataSPJ) }));
+    else set({ dataSPJ: data });
+  },
   setPrintedNotes: (data) => set({ printedNotes: data }),
 }));

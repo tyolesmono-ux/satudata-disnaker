@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Wallet, ChevronDown, ChevronRight, Menu, CheckCircle2, AlertCircle, Users, ReceiptText, ShieldCheck, FileText, BarChart } from 'lucide-react';
+import { LayoutDashboard, Wallet, ChevronDown, ChevronRight, Menu, CheckCircle2, AlertCircle, Users, ReceiptText, ShieldCheck, FileText, BarChart, History } from 'lucide-react';
 
 // Import Komfigurasi & Helper
 import { GAS_URL, theme } from './config/constants';
@@ -18,6 +18,7 @@ import { KomparasiAnggaran } from './components/KomparasiAnggaran';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import ManajemenUser from './pages/ManajemenUser';
+import LogAktivitas from './pages/LogAktivitas';
 import logo from './assets/satudata-logo.png';
 
 import { useAppStore } from './store/useAppStore';
@@ -204,6 +205,10 @@ export default function App() {
                 <Users size={18} />
                 <span className="font-semibold">Manajemen User</span>
               </NavLink>
+              <NavLink to="/pengaturan/log" className={({isActive})=>`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${isActive ? 'bg-[#D4AF37] text-[#0A192F] shadow-lg shadow-[#D4AF37]/20 scale-105' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                <History size={18} />
+                <span className="font-semibold">Log Aktivitas</span>
+              </NavLink>
             </div>
           )}
         </nav>
@@ -269,6 +274,7 @@ export default function App() {
 
                 <Route path="/pengaturan">
                   <Route path="users" element={<ProtectedRoute><ManajemenUser /></ProtectedRoute>} />
+                  <Route path="log" element={<ProtectedRoute><LogAktivitas /></ProtectedRoute>} />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" replace />} />
