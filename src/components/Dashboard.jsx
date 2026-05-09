@@ -65,9 +65,9 @@ const ProgressBar = ({ pagu, realisasi, isDark = false }) => {
 };
 
 export default function DashboardView() {
-  const { programs, kegiatans, subKegiatans, rekenings, realisasiGU, storageStats } = useAppStore();
-  const [dashTahun, setDashTahun] = useState(new Date().getFullYear().toString());
-  const [dashTahap, setDashTahap] = useState('APBD');
+  const { programs, kegiatans, subKegiatans, rekenings, realisasiGU, storageStats, settings } = useAppStore();
+  const [dashTahun, setDashTahun] = useState(settings.activeTahun);
+  const [dashTahap, setDashTahap] = useState(settings.activeTahap);
   const [filterProgram, setFilterProgram] = useState('');
   const [filterKegiatan, setFilterKegiatan] = useState('');
   const [filterSubkegiatan, setFilterSubkegiatan] = useState('');

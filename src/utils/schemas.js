@@ -22,12 +22,12 @@ export const SubKegiatanSchema = z.object({
 });
 
 export const RekeningSchema = z.object({
-  kode_subkegiatan: z.string().min(1, 'Wajib pilih Sub Kegiatan'),
-  kode_rekening: z.string().min(1, 'Kode Rekening wajib diisi'),
+  kode_subkegiatan: z.coerce.string().min(1, 'Wajib pilih Sub Kegiatan'),
+  kode_rekening: z.coerce.string().min(1, 'Kode Rekening wajib diisi'),
   nama_rekening: z.string().min(3, 'Nama Rekening minimal 3 karakter'),
   pagu: z.coerce.number().min(0, 'Pagu tidak boleh negatif'),
-  tahun_anggaran: z.string(),
-  tahap_anggaran: z.string()
+  tahun_anggaran: z.coerce.string(),
+  tahap_anggaran: z.coerce.string()
 });
 
 export const PegawaiASNSchema = z.object({
@@ -57,8 +57,8 @@ export const WPPihakKetigaSchema = z.object({
 });
 
 export const RealisasiGUSchema = z.object({
-  tahun_anggaran: z.string(),
-  tahap_anggaran: z.string(),
+  tahun_anggaran: z.coerce.string(),
+  tahap_anggaran: z.coerce.string(),
   bulan_spj: z.string().min(1, 'Bulan SPJ wajib diisi'),
   proses_gu: z.string().min(1, 'Proses GU wajib diisi'),
   kode_subkegiatan: z.string().min(1, 'Sub Kegiatan wajib dipilih'),

@@ -2,7 +2,7 @@
  * BACKEND SATUDATA - Dinas Tenaga Kerja
  */
 
-const SHEET_NAMES = ['Program', 'Kegiatan', 'SubKegiatan', 'Rekening', 'RincianBelanja', 'StandarHarga', 'PegawaiASN', 'WPPribadi', 'WPPihakKetiga', 'KOP21', 'KOPUNI', 'RealisasiGU', 'DataSPJ', 'PrintedNotes', 'Tagging'];
+const SHEET_NAMES = ['Program', 'Kegiatan', 'SubKegiatan', 'Rekening', 'RincianBelanja', 'StandarHarga', 'PegawaiASN', 'WPPribadi', 'WPPihakKetiga', 'KOP21', 'KOPUNI', 'RealisasiGU', 'DataSPJ', 'PrintedNotes', 'Tagging', 'Settings'];
 const FOLDER_ID = '1majeQxu3-VGaTaV2afxXS-Dp4-4DV0yq';
 const JWT_SECRET = 'SatudataDisnakerSecret2026!@#'; // Jangan ubah setelah dipakai
 
@@ -135,7 +135,7 @@ function doPost(e) {
     }
 
     // 3. ACTION MANAGEMENT USER & AUDIT LOG (Hanya Super Admin)
-    if (action === 'getUsers' || action === 'addUser' || action === 'deleteUser' || action === 'getAuditLogs') {
+    if (action === 'getUsers' || action === 'addUser' || action === 'deleteUser' || action === 'getAuditLogs' || action === 'updateSettings' || action === 'initialize_new_phase') {
       if (user.role !== 'super_admin') return createJsonResponse({ status: 'error', message: 'Akses Ditolak: Hanya Super Admin yang boleh mengakses modul ini.' });
       
       var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -195,6 +195,91 @@ function doPost(e) {
         }
         return createJsonResponse({ status: 'error', message: 'User tidak ditemukan' });
       }
+
+      if (action === 'updateSettings') {
+        const payload = requestData.payload;
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        let sheet = ss.getSheetByName('Settings');
+        if (!sheet) {
+          sheet = ss.insertSheet('Settings');
+          sheet.appendRow(['key', 'value', 'timestamp']);
+        }
+        
+        const data = sheet.getDataRange().getValues();
+        const keys = Object.keys(payload);
+        
+        keys.forEach(key => {
+          let found = false;
+          for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === key) {
+              sheet.getRange(i + 1, 2).setValue(payload[key]);
+              sheet.getRange(i + 1, 3).setValue(new Date());
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            sheet.appendRow([key, payload[key], new Date()]);
+          }
+        });
+        
+        recordAuditLog(user.username, user.role, 'UPDATE_SETTINGS', 'System', 'Update konfigurasi sistem: ' + keys.join(', '));
+        return createJsonResponse({ status: 'success', message: 'Konfigurasi berhasil disimpan!' });
+      }
+
+      // === ACTION: INITIALIZE NEW PHASE (Bulk Copy) ===
+      if (action === 'initialize_new_phase') {
+        const payload = requestData.payload;
+        const sheet = ss.getSheetByName('Rekening');
+        if (!sheet || sheet.getLastRow() <= 1) return createJsonResponse({ status: 'error', message: 'Sheet Rekening tidak ditemukan atau kosong.' });
+        
+        const data = sheet.getDataRange().getValues();
+        // NORMALIZE HEADERS TO LOWERCASE for robust matching
+        const headers = data[0].map(h => h.toString().toLowerCase().trim());
+        const sourceTahap = payload.sourcePhase;
+        const targetTahap = payload.targetPhase;
+        const tahun = String(payload.year);
+        
+        const colIdx = {
+          tahap: headers.indexOf('tahap_anggaran'),
+          tahun: headers.indexOf('tahun_anggaran'),
+          ts: headers.indexOf('timestamp')
+        };
+        
+        if (colIdx.ts === -1) return createJsonResponse({ status: 'error', message: 'Kolom timestamp tidak ditemukan di sheet Rekening.' });
+
+        const newRows = [];
+        const baseTs = new Date().toISOString(); 
+        
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][colIdx.tahun]) === tahun && String(data[i][colIdx.tahap]) === sourceTahap) {
+            const newRow = [...data[i]];
+            newRow[colIdx.tahap] = targetTahap;
+            // Generate a truly unique string ID to avoid any Sheets date formatting issues
+            newRow[colIdx.ts] = baseTs + "_" + i; 
+            
+            // Ensure codes stay as strings with ' prefix
+            const textCols = ['kode_subkegiatan', 'kode_rekening', 'kode_barang'];
+            textCols.forEach(colName => {
+              const idx = headers.indexOf(colName);
+              if (idx !== -1) newRow[idx] = "'" + String(newRow[idx]).replace(/^'/, '');
+            });
+            
+            newRows.push(newRow);
+          }
+        }
+        
+        if (newRows.length === 0) {
+          return createJsonResponse({ status: 'error', message: `Tidak ada data found untuk Tahap ${sourceTahap} di Tahun ${tahun}` });
+        }
+        
+        // Batch append
+        const startRow = sheet.getLastRow() + 1;
+        sheet.getRange(startRow, 1, newRows.length, headers.length).setValues(newRows);
+        
+        recordAuditLog(user.username, user.role, 'INITIALIZE_PHASE', 'Rekening', `Inisiasi Tahap ${targetTahap} dari ${sourceTahap} (${newRows.length} item)`);
+        return createJsonResponse({ status: 'success', message: `Berhasil menginisiasi ${newRows.length} data ke Tahap ${targetTahap}!` });
+      }
     }
 
     // 4. ACTION GET ALL DATA
@@ -205,6 +290,15 @@ function doPost(e) {
       });
       // Sertakan statistik storage dasar
       data.storage_stats = getSpreadsheetStats();
+      
+      // Khusus settings, ubah jadi object key-value
+      const rawSettings = data.settings || [];
+      const settingsObj = {};
+      rawSettings.forEach(s => {
+        if (s.key) settingsObj[s.key] = s.value;
+      });
+      data.settings = settingsObj;
+      
       return createJsonResponse({ status: 'success', data: data });
     }
 
@@ -644,11 +738,11 @@ function doPost(e) {
       return createJsonResponse({ status: 'success', message: 'SPJ Berhasil ditolak dan nota dikembalikan ke Draft.' });
     }
 
-    // === ACTION: UPDATE ===
-    if (action === 'update' && sheetName === 'RealisasiGU') {
+    // === ACTION: UPDATE (Generic) ===
+    if (action === 'update' && SHEET_NAMES.includes(sheetName)) {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
       const sheet = ss.getSheetByName(sheetName);
-      if (!sheet || sheet.getLastRow() <= 1) return createJsonResponse({ status: 'error', message: 'Sheet tidak ditemukan.' });
+      if (!sheet || sheet.getLastRow() <= 1) return createJsonResponse({ status: 'error', message: 'Sheet tidak ditemukan atau kosong.' });
       
       const data = sheet.getDataRange().getValues();
       const headers = data[0];
@@ -663,16 +757,18 @@ function doPost(e) {
       for (let i = 1; i < data.length; i++) {
         let rowVal = data[i][tsColIndex];
         
+        // Handle case where timestamp might be missing (rare)
         if (!rowVal || rowVal === '') {
           rowVal = `old_row_${i + 1}`;
         }
 
         let isMatch = false;
-        
         for (let targetTs of timestamps) {
           if (rowVal instanceof Date) {
+            // Precise Date matching
             if (rowVal.getTime() === new Date(targetTs).getTime()) { isMatch = true; break; }
           } else {
+            // String matching
             if (String(rowVal) === String(targetTs)) { isMatch = true; break; }
           }
         }
@@ -686,7 +782,7 @@ function doPost(e) {
               const textFields = [
                 'nik_vendor', 'kode_billing', 'no_ntpn', 'no_ntb', 
                 'kode_subkegiatan', 'kode_rekening', 'nik', 'npwp', 'nip', 'nitku',
-                'kode_program', 'kode_kegiatan', 'kode_objek_pajak', 'id_spj'
+                'kode_program', 'kode_kegiatan', 'kode_objek_pajak', 'id_spj', 'kode_barang'
               ];
               if (textFields.includes(key)) {
                 val = "'" + val;
@@ -699,6 +795,7 @@ function doPost(e) {
         }
       }
       
+      recordAuditLog(user.username, user.role, 'UPDATE', sheetName, `Memperbarui ${count} data`);
       return createJsonResponse({ status: 'success', message: `${count} data berhasil diperbarui!` });
     }
 
@@ -769,6 +866,7 @@ function setHeaders(sheet, sheetName) {
   ];
   else if (lowerName === 'printednotes') headers = ['timestamp_nota', 'timestamp'];
   else if (lowerName === 'tagging') headers = ['kategori', 'nama_tag', 'timestamp'];
+  else if (lowerName === 'settings') headers = ['key', 'value', 'timestamp'];
   
   if (headers.length > 0) {
     sheet.appendRow(headers);

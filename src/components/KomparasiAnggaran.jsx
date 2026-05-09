@@ -161,7 +161,7 @@ export const KomparasiAnggaran = () => {
             </h1>
           </div>
           <p className="text-gray-500 text-sm ml-14 font-['Roboto']">
-            Membandingkan pagu antar tahapan anggaran untuk melihat perubahan dan efisiensi
+            Membandingkan Pagu Antar Tahapan Anggaran Untuk Melihat Perubahan Dan Efisiensi
           </p>
         </div>
       </div>
@@ -251,7 +251,7 @@ export const KomparasiAnggaran = () => {
               {dataKomparasi.length} item
             </span>
           </div>
-          <p className="text-[11px] text-gray-400">Hanya menampilkan rekening dengan perubahan nilai</p>
+          <p className="text-[11px] text-gray-400">Hanya Menampilkan Rekening Dengan Perubahan Pagu</p>
         </div>
 
         {dataKomparasi.length === 0 ? (
@@ -259,7 +259,7 @@ export const KomparasiAnggaran = () => {
             <div className="flex flex-col items-center justify-center text-gray-400">
               <HelpCircle size={48} className="mb-3 opacity-50" />
               <p className="text-base font-semibold text-gray-500 font-['Roboto']">Tidak Ada Perubahan</p>
-              <p className="text-sm text-gray-400 mt-1">Semua pagu masih tetap atau data tidak tersedia pada tahap yang dipilih.</p>
+              <p className="text-sm text-gray-400 mt-1">Semua Pagu Masih Tetap Atau Data Tidak Tersedia Pada Tahap Yang Dipilih.</p>
             </div>
           </div>
         ) : (
@@ -311,7 +311,7 @@ export const KomparasiAnggaran = () => {
       {/* Catatan kaki */}
       {dataKomparasi.length > 0 && (
         <div className="text-xs text-gray-400 text-center py-2 font-['Roboto']">
-          * Hanya menampilkan rekening dengan perubahan nilai dari {tahapAwal} ke {tahapAkhir}
+          * Hanya Menampilkan Rekening Dengan Perubahan Nilai Dari {tahapAwal} Ke {tahapAkhir}
         </div>
       )}
     </div>

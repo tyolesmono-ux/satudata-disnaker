@@ -15,7 +15,9 @@ export const FormRealisasiGU = () => {
 
   const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({
-    tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD', bulan_spj: '', proses_gu: 'GU-01',
+    tahun_anggaran: useAppStore.getState().settings.activeTahun, 
+    tahap_anggaran: useAppStore.getState().settings.activeTahap, 
+    bulan_spj: '', proses_gu: 'GU-01',
     kode_subkegiatan: '', kode_rekening: '', rekening_id: '', tanggal_nota: '', keterangan_nota: '', nik_vendor: '', nama_vendor: '', punya_npwp: false,
     tipe_vendor: '', golongan_vendor: '', kategori_pajak: '', kop_pajak: '', nominal_nota: '', ppn: 0, pph21: 0, pph22: 0, pph23: 0
   });
@@ -271,10 +273,10 @@ export const FormRealisasiGU = () => {
 
       {/* === SECTION 1: FILTER HEADER === */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4 p-4 rounded-lg bg-blue-50 border border-blue-100">
-        <SelectField label="Tahun" value={formData.tahun_anggaran} onChange={e => setFormData({ ...formData, tahun_anggaran: e.target.value })} required>
+        <SelectField label="Tahun" value={formData.tahun_anggaran} onChange={e => setFormData({ ...formData, tahun_anggaran: e.target.value })} required disabled>
           {Array.from(new Set(rekenings.map(r => String(r.tahun_anggaran)))).sort((a, b) => b - a).map(y => <option key={y} value={y}>{y}</option>)}
         </SelectField>
-        <SelectField label="Tahap" value={formData.tahap_anggaran} onChange={e => setFormData({ ...formData, tahap_anggaran: e.target.value })} required>
+        <SelectField label="Tahap" value={formData.tahap_anggaran} onChange={e => setFormData({ ...formData, tahap_anggaran: e.target.value })} required disabled>
           <option value="APBD">APBD</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Pergeseran 2">Pergeseran 2</option><option value="Perubahan">Perubahan (PAK)</option>
         </SelectField>
         <SelectField label="Bulan SPJ" value={formData.bulan_spj} onChange={e => setFormData({ ...formData, bulan_spj: e.target.value })} required><option value="">-- Bulan --</option>{['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(b => <option key={b} value={b}>{b}</option>)}</SelectField>

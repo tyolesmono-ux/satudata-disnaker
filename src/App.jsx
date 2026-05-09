@@ -26,6 +26,7 @@ import LoginPage from './pages/LoginPage';
 import ManajemenUser from './pages/ManajemenUser';
 import LogAktivitas from './pages/LogAktivitas';
 import MasterTagging from './pages/MasterTagging';
+import SettingsPage from './pages/SettingsPage';
 import logo from './assets/satudata-logo.png';
 
 import { useAppStore } from './store/useAppStore';
@@ -296,6 +297,10 @@ export default function App() {
                   <Tag size={18} />
                   {sidebarOpen && <span className="text-sm font-medium">Manajemen Tagging</span>}
                 </NavLink>
+                <NavLink to="/pengaturan/sistem" className={({ isActive }) => `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${isActive ? 'text-amber-400 bg-amber-500/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                  <Settings size={18} />
+                  {sidebarOpen && <span className="text-sm font-medium">Konfigurasi Sistem</span>}
+                </NavLink>
               </div>
             </div>
           )}
@@ -384,6 +389,7 @@ export default function App() {
                     <Route path="shs" element={<ProtectedRoute><StandarHarga /></ProtectedRoute>} />
                     <Route path="log" element={<ProtectedRoute><LogAktivitas /></ProtectedRoute>} />
                     <Route path="tagging" element={<ProtectedRoute><MasterTagging /></ProtectedRoute>} />
+                    <Route path="sistem" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
                   </Route>
 
                   <Route path="*" element={<Navigate to="/" replace />} />

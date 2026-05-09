@@ -19,6 +19,7 @@ export const useAppStore = create((set, get) => ({
   rincianbelanja: [],
   standarharga: [],
   taggings: [],
+  settings: { activeTahap: 'APBD', activeTahun: new Date().getFullYear().toString() },
   storageStats: null,
   
   // --- UI STATES ---
@@ -206,31 +207,32 @@ export const useAppStore = create((set, get) => ({
       });
       const result = await response.json();
       if (result.status === 'success') {
-        const formattedRealisasi = (result.data.realisasigu || []).map((r, idx) => {
-          const uniqueId = r.timestamp ? String(r.timestamp) : `temp_${idx}_${Date.now()}`;
-          return { 
-            ...r, 
-            id_nota: r.id_nota || uniqueId,
-            timestamp: uniqueId
-          };
-        });
+        const data = result.data;
+        const normalize = (list) => (list || []).map((item, idx) => ({
+          ...item,
+          timestamp: item.timestamp ? String(item.timestamp) : `old_row_${idx + 2}`
+        }));
 
         set({
-          programs: result.data.program || [],
-          kegiatans: result.data.kegiatan || [],
-          subKegiatans: result.data.subkegiatan || [],
-          rekenings: result.data.rekening || [],
-          pegawaiASN: result.data.pegawaiasn || [],
-          wpPribadi: result.data.wppribadi || [],
-          wpPihakKetiga: result.data.wppihakketiga || [],
-          dataSPJ: result.data.dataspj || [],
-          kop21: result.data.kop21 || [],
-          kopUNI: result.data.kopuni || [],
-          rincianbelanja: result.data.rincianbelanja || [],
-          standarharga: result.data.standarharga || [],
-          taggings: result.data.tagging || [],
-          storageStats: result.data.storage_stats || null,
-          realisasiGU: formattedRealisasi
+          programs: normalize(data.program),
+          kegiatans: normalize(data.kegiatan),
+          subKegiatans: normalize(data.subkegiatan),
+          rekenings: normalize(data.rekening),
+          pegawaiASN: normalize(data.pegawaiasn),
+          wpPribadi: normalize(data.wppribadi),
+          wpPihakKetiga: normalize(data.wppihakketiga),
+          dataSPJ: normalize(data.dataspj),
+          kop21: data.kop21 || [],
+          kopUNI: data.kopuni || [],
+          rincianbelanja: normalize(data.rincianbelanja),
+          standarharga: normalize(data.standarharga),
+          taggings: normalize(data.tagging),
+          settings: {
+            activeTahap: String(data.settings?.activeTahap || 'APBD'),
+            activeTahun: String(data.settings?.activeTahun || new Date().getFullYear().toString())
+          },
+          storageStats: data.storage_stats || null,
+          realisasiGU: normalize(data.realisasigu).map(r => ({ ...r, id_nota: r.id_nota || r.timestamp }))
         });
       }
     } catch (error) {
@@ -306,22 +308,96 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
-  handleUpdateData: async (timestamp, updates) => {
-    set({ modal: { show: true, status: 'loading', message: 'Sedang memperbarui data...' } });
+  handleUpdateData: async (sheetName, timestamp, updates) => {
+    set({ modal: { show: true, status: 'loading', message: `Sedang memperbarui data ${sheetName}...` } });
     try {
+      const token = get().token;
       const response = await fetchWithTimeout(GAS_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'update', sheet: 'RealisasiGU', payload: { timestamp: timestamp, updates } }),
+        body: JSON.stringify({ action: 'update', sheet: sheetName, payload: { timestamp, updates }, token }),
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
       });
       const result = await response.json();
       if (result.status !== 'success') throw new Error(result.message);
 
       const tsArray = Array.isArray(timestamp) ? timestamp.map(String) : [String(timestamp)];
+      if (tsArray.includes("undefined") || tsArray.includes("null")) {
+        console.error("Attempted update with invalid timestamp", tsArray);
+        throw new Error("Invalid timestamp: Data tidak memiliki ID unik untuk diupdate.");
+      }
+      
+      const currentState = get();
+      const updateState = {};
+      const keyMap = {
+        'Program': 'programs',
+        'Kegiatan': 'kegiatans',
+        'SubKegiatan': 'subKegiatans',
+        'Rekening': 'rekenings',
+        'PegawaiASN': 'pegawaiASN',
+        'WPPribadi': 'wpPribadi',
+        'WPPihakKetiga': 'wpPihakKetiga',
+        'RealisasiGU': 'realisasiGU',
+        'Tagging': 'taggings'
+      };
+
+      const stateKey = keyMap[sheetName];
+      if (stateKey) {
+        updateState[stateKey] = currentState[stateKey].map(item => 
+          tsArray.includes(String(item.timestamp)) ? { ...item, ...updates } : item
+        );
+      }
+
       set({
-        realisasiGU: get().realisasiGU.map(r => 
-          tsArray.includes(String(r.timestamp)) ? { ...r, ...updates } : r
-        ),
+        ...updateState,
+        modal: { show: true, status: 'success', message: result.message }
+      });
+      get().fetchAllData(); // Sync background
+      return true;
+    } catch (error) {
+      set({ modal: { show: true, status: 'error', message: `Gagal: ${error.message}` } });
+      return false;
+    }
+  },
+
+  handleInitializePhase: async (sourcePhase, targetPhase, year) => {
+    set({ modal: { show: true, status: 'loading', message: `Sedang menginisiasi tahap ${targetPhase}...` } });
+    try {
+      const token = get().token;
+      const response = await fetchWithTimeout(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ 
+          action: 'initialize_new_phase', 
+          payload: { sourcePhase, targetPhase, year }, 
+          token 
+        }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+      const result = await response.json();
+      if (result.status !== 'success') throw new Error(result.message);
+
+      set({ modal: { show: true, status: 'success', message: result.message } });
+      await get().fetchAllData(); // Refresh all data to get the new rows
+      return true;
+    } catch (error) {
+      set({ modal: { show: true, status: 'error', message: `Gagal: ${error.message}` } });
+      return false;
+    }
+  },
+
+  handleUpdateSettings: async (newSettings) => {
+    set({ modal: { show: true, status: 'loading', message: 'Menyimpan konfigurasi sistem...' } });
+    try {
+      const token = get().token;
+      const response = await fetchWithTimeout(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'updateSettings', payload: newSettings, token }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+      const result = await response.json();
+      if (result.status !== 'success') throw new Error(result.message);
+
+      set({ 
+        settings: { ...get().settings, ...newSettings },
         modal: { show: true, status: 'success', message: result.message }
       });
       return true;
