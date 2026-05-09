@@ -16,6 +16,10 @@ export const useAppStore = create((set, get) => ({
   dataSPJ: [],
   kop21: [],
   kopUNI: [],
+  rincianbelanja: [],
+  standarharga: [],
+  taggings: [],
+  storageStats: null,
   
   // --- UI STATES ---
   sidebarOpen: true,
@@ -222,6 +226,10 @@ export const useAppStore = create((set, get) => ({
           dataSPJ: result.data.dataspj || [],
           kop21: result.data.kop21 || [],
           kopUNI: result.data.kopuni || [],
+          rincianbelanja: result.data.rincianbelanja || [],
+          standarharga: result.data.standarharga || [],
+          taggings: result.data.tagging || [],
+          storageStats: result.data.storage_stats || null,
           realisasiGU: formattedRealisasi
         });
       }
@@ -273,6 +281,9 @@ export const useAppStore = create((set, get) => ({
       if (sheetName === 'PegawaiASN') updateState.pegawaiASN = [...currentState.pegawaiASN, payload];
       if (sheetName === 'WPPribadi') updateState.wpPribadi = [...currentState.wpPribadi, payload];
       if (sheetName === 'WPPihakKetiga') updateState.wpPihakKetiga = [...currentState.wpPihakKetiga, payload];
+      if (sheetName === 'RincianBelanja') updateState.rincianbelanja = [...currentState.rincianbelanja, payload];
+      if (sheetName === 'StandarHarga') updateState.standarharga = [...currentState.standarharga, payload];
+      if (sheetName === 'Tagging') updateState.taggings = [...currentState.taggings, payload];
       if (sheetName === 'RealisasiGU') {
         const realIdNota = result.id_nota || ('temp_' + Date.now());
         const realTimestamp = result.timestamp || realIdNota;

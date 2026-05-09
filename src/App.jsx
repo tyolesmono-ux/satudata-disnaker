@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { LayoutDashboard, Wallet, ChevronDown, ChevronRight, Menu, CheckCircle2, AlertCircle, Users, ReceiptText, ShieldCheck, FileText, BarChart, History } from 'lucide-react';
+import { LayoutDashboard, Wallet, ChevronDown, ChevronRight, Menu, CheckCircle2, AlertCircle, Users, ReceiptText, ShieldCheck, FileText, BarChart, History, FileSpreadsheet, Tag } from 'lucide-react';
 
 // Import Komfigurasi & Helper
 import { GAS_URL, theme } from './config/constants';
@@ -13,12 +13,14 @@ import { FormProgram, FormKegiatan, FormSubKegiatan, FormRekening } from './comp
 import { FormPegawaiASN, FormWPPribadi, FormWPPihakKetiga, DaftarWajibPajak } from './components/WajibPajak';
 import { FormRealisasiGU, FormCetakSPJ, PrintLayout } from './components/Realisasi';
 import VerifikasiSPJ from './components/VerifikasiSPJ';
+import StandarHarga from './pages/StandarHarga';
 import { LaporanRekapGU, LaporanCoreTax, LaporanSIMDTH } from './components/Laporan';
 import { KomparasiAnggaran } from './components/KomparasiAnggaran';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import ManajemenUser from './pages/ManajemenUser';
 import LogAktivitas from './pages/LogAktivitas';
+import MasterTagging from './pages/MasterTagging';
 import logo from './assets/satudata-logo.png';
 
 import { useAppStore } from './store/useAppStore';
@@ -112,7 +114,8 @@ export default function App() {
                   { path: '/anggaran/program', label: 'Input Program' }, 
                   { path: '/anggaran/kegiatan', label: 'Input Kegiatan' }, 
                   { path: '/anggaran/sub-kegiatan', label: 'Input Sub Kegiatan' }, 
-                  { path: '/anggaran/rekening', label: 'Input Rekening' }
+                  { path: '/anggaran/rekening', label: 'Input Rekening' },
+                  { path: '/anggaran/komparasi', label: 'Analisis Pergeseran' }
                 ].map((item) => (
                   <NavLink key={item.path} to={item.path} className={({ isActive }) => `w-full block text-left py-2 px-3 rounded-md text-sm ${isActive ? 'text-white font-medium bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
                     {item.label}
@@ -120,16 +123,6 @@ export default function App() {
                 ))}
               </div>
             )}
-          </div>
-          <div className="pt-2">
-            <NavLink to="/anggaran/komparasi" className={({ isActive }) => `w-full flex items-center p-3 rounded-lg transition-all duration-300 hover-scale ${isActive ? 'bg-white/10 shadow-lg' : 'hover:bg-white/5'}`}>
-              {({ isActive }) => (
-                <>
-                  <BarChart size={20} style={{ color: isActive ? theme.gold : '#9ca3af' }} className="shrink-0" />
-                  {sidebarOpen && <span className="ml-3 font-medium text-white">Analisis Pergeseran</span>}
-                </>
-              )}
-            </NavLink>
           </div>
           <div className="pt-2">
             <button onClick={() => { if(!sidebarOpen) setSidebarOpen(true); setExpandedMenu(expandedMenu === 'wp' ? null : 'wp'); }} className="w-full flex items-center justify-between p-3 rounded-lg transition-all duration-300 hover-scale hover:bg-white/5">
@@ -205,9 +198,17 @@ export default function App() {
                 <Users size={18} />
                 <span className="font-semibold">Manajemen User</span>
               </NavLink>
+              <NavLink to="/pengaturan/shs" className={({isActive})=>`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${isActive ? 'bg-[#D4AF37] text-[#0A192F] shadow-lg shadow-[#D4AF37]/20 scale-105' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                <FileSpreadsheet size={18} />
+                <span className="font-semibold">Standar Harga (SHS)</span>
+              </NavLink>
               <NavLink to="/pengaturan/log" className={({isActive})=>`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${isActive ? 'bg-[#D4AF37] text-[#0A192F] shadow-lg shadow-[#D4AF37]/20 scale-105' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
                 <History size={18} />
                 <span className="font-semibold">Log Aktivitas</span>
+              </NavLink>
+              <NavLink to="/pengaturan/tagging" className={({isActive})=>`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${isActive ? 'bg-[#D4AF37] text-[#0A192F] shadow-lg shadow-[#D4AF37]/20 scale-105' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                <Tag size={18} />
+                <span className="font-semibold">Manajemen Tagging</span>
               </NavLink>
             </div>
           )}
@@ -274,7 +275,9 @@ export default function App() {
 
                 <Route path="/pengaturan">
                   <Route path="users" element={<ProtectedRoute><ManajemenUser /></ProtectedRoute>} />
+                  <Route path="shs" element={<ProtectedRoute><StandarHarga /></ProtectedRoute>} />
                   <Route path="log" element={<ProtectedRoute><LogAktivitas /></ProtectedRoute>} />
+                  <Route path="tagging" element={<ProtectedRoute><MasterTagging /></ProtectedRoute>} />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" replace />} />

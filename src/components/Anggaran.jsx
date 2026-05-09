@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Download, Upload, FileSpreadsheet, Table, Search, Trash2 } from 'lucide-react';
-import { FormContainer, InputField, SelectField } from './SharedUI';
+import { Download, Upload, FileSpreadsheet, Table, Search, Trash2, Info, CheckSquare } from 'lucide-react';
+import { FormContainer, InputField, SelectField, SearchableSelect } from './SharedUI';
 import { theme } from '../config/constants';
 import { formatRupiah } from '../utils/helpers';
 import { useAppStore } from '../store/useAppStore';
@@ -55,26 +55,100 @@ export const FormSubKegiatan = () => {
 };
 
 export const FormRekening = () => {
-  const { handleSaveData, modal, subKegiatans, rekenings, fetchAllData, setModal, showToast, user } = useAppStore();
+  const { handleSaveData, modal, subKegiatans, rekenings, standarharga, fetchAllData, setModal, showToast, user, taggings } = useAppStore();
   const isLoading = modal.show && modal.status === 'loading';
-  const [formData, setFormData] = useState({ kode_subkegiatan: '', kode_rekening: '', nama_rekening: '', pagu: '', tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD' });
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  
+  const [formData, setFormData] = useState({ 
+    kode_subkegiatan: '', 
+    kode_rekening: '', 
+    nama_rekening: '', 
+    pagu: '', 
+    tahun_anggaran: new Date().getFullYear().toString(), 
+    tahap_anggaran: 'APBD',
+    paket_belanja: '',
+    keterangan_belanja: '',
+    kode_barang: '',
+    uraian_barang: '',
+    spesifikasi: '',
+    satuan: '',
+    harga_satuan: '',
+    koefisien_uraian: '',
+    volume: ''
+  });
+
+  const [rekeningOptions, setRekeningOptions] = useState([]);
   const [importProgress, setImportProgress] = useState(0);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef(null);
   
-  const masterRekening = useMemo(() => {
-    const unique = []; const map = new Map();
-    rekenings.forEach(item => { if (item.kode_rekening && !map.has(item.kode_rekening)) { map.set(item.kode_rekening, true); unique.push({ kode_rekening: item.kode_rekening, nama_rekening: item.nama_rekening }); } });
-    return unique;
-  }, [rekenings]);
+  // Options untuk SearchableSelect Barang SHS
+  const shsOptions = useMemo(() => {
+    return standarharga.map(item => ({
+      value: item.kode_barang,
+      label: `[${item.kode_barang}] ${item.uraian_barang}`,
+      sublabel: `${item.spesifikasi || '-'} | ${formatRupiah(item.harga_satuan)} / ${item.satuan}`,
+      raw: item
+    }));
+  }, [standarharga]);
 
-  const filteredSuggestions = useMemo(() => {
-    if (!formData.kode_rekening) return []; const kw = String(formData.kode_rekening).toLowerCase();
-    return masterRekening.filter(item => String(item.kode_rekening).toLowerCase().includes(kw) || String(item.nama_rekening).toLowerCase().includes(kw));
-  }, [formData.kode_rekening, masterRekening]);
+  const paketOptions = useMemo(() => {
+    return taggings
+      .filter(t => t.kategori === 'Paket')
+      .map(t => ({ value: t.nama_tag, label: t.nama_tag }));
+  }, [taggings]);
 
-  const handleSubmit = async (e) => { e.preventDefault(); const success = await handleSaveData('Rekening', formData); if(success) setFormData({ ...formData, kode_rekening: '', nama_rekening: '', pagu: '' }); };
+  const keteranganOptions = useMemo(() => {
+    return taggings
+      .filter(t => t.kategori === 'Keterangan')
+      .map(t => ({ value: t.nama_tag, label: t.nama_tag }));
+  }, [taggings]);
+
+  // Handle saat barang SHS dipilih
+  const handleSelectSHS = (kodeBarang) => {
+    const selected = standarharga.find(s => s.kode_barang === kodeBarang);
+    if (selected) {
+      // Pecah list kode rekening dari database SHS
+      const rekList = (selected.kode_rekening_list || '').split(',').map(s => s.trim()).filter(Boolean);
+      setRekeningOptions(rekList);
+      
+      setFormData(prev => ({
+        ...prev,
+        kode_barang: selected.kode_barang,
+        uraian_barang: selected.uraian_barang,
+        spesifikasi: selected.spesifikasi,
+        satuan: selected.satuan,
+        harga_satuan: selected.harga_satuan,
+        kode_rekening: rekList[0] || '',
+        nama_rekening: selected.uraian_barang
+      }));
+    }
+  };
+
+  // Kalkulasi Pagu otomatis saat Volume atau Harga Satuan berubah
+  React.useEffect(() => {
+    const vol = Number(formData.volume || 0);
+    const price = Number(formData.harga_satuan || 0);
+    setFormData(prev => ({ ...prev, pagu: vol * price }));
+  }, [formData.volume, formData.harga_satuan]);
+
+  const handleSubmit = async (e) => { 
+    e.preventDefault(); 
+    const success = await handleSaveData('Rekening', formData); 
+    if(success) setFormData({ 
+      ...formData, 
+      kode_rekening: '', 
+      nama_rekening: '', 
+      pagu: '', 
+      kode_barang: '', 
+      uraian_barang: '', 
+      spesifikasi: '', 
+      satuan: '', 
+      harga_satuan: '', 
+      koefisien_uraian: '', 
+      volume: '',
+      keterangan_belanja: ''
+    }); 
+  };
 
   const handleExportExcel = () => {
     if (!rekenings || rekenings.length === 0) return showToast('Tidak ada data untuk diexport', 'error');
@@ -86,7 +160,16 @@ export const FormRekening = () => {
       nama_rekening: r.nama_rekening,
       pagu: Number(r.pagu || 0),
       tahun_anggaran: String(r.tahun_anggaran),
-      tahap_anggaran: r.tahap_anggaran
+      tahap_anggaran: r.tahap_anggaran,
+      paket_belanja: r.paket_belanja || '',
+      keterangan_belanja: r.keterangan_belanja || '',
+      kode_barang: String(r.kode_barang || '').replace(/^'/, ''),
+      uraian_barang: r.uraian_barang || '',
+      spesifikasi: r.spesifikasi || '',
+      satuan: r.satuan || '',
+      harga_satuan: Number(r.harga_satuan || 0),
+      koefisien_uraian: r.koefisien_uraian || '',
+      volume: Number(r.volume || 0)
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -145,42 +228,172 @@ export const FormRekening = () => {
         setIsImporting(false);
         setImportProgress(0);
         if (fileInputRef.current) fileInputRef.current.value = '';
-      }
+      };
     };
     reader.readAsArrayBuffer(file);
   };
 
   return (
-    <div className="space-y-8">
-      <FormContainer title="Input Data Rekening (Pagu)" onSubmit={handleSubmit} isSubmitting={isLoading}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2 p-4 rounded-lg bg-gray-50 border" style={{ borderColor: theme.borderGray }}>
-          <SelectField label="Tahun Anggaran" value={formData.tahun_anggaran} onChange={e => setFormData({...formData, tahun_anggaran: e.target.value})} required>
-            <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option>
-          </SelectField>
-          <SelectField label="Tahap Anggaran" value={formData.tahap_anggaran} onChange={e => setFormData({...formData, tahap_anggaran: e.target.value})} required>
-            <option value="APBD">APBD</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Pergeseran 2">Pergeseran 2</option><option value="Perubahan">Perubahan (PAK)</option>
-          </SelectField>
+    <div className="space-y-12 pb-20">
+      <FormContainer title="Penyusunan Rincian Anggaran" onSubmit={handleSubmit} isSubmitting={isLoading}>
+        
+        {/* SECTION 1: KONFIGURASI DASAR */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
+            <div className="w-1.5 h-6 bg-[#D4AF37] rounded-full"></div>
+            <h4 className="text-sm font-black text-[#0A192F] uppercase tracking-widest">I. Konfigurasi Dasar</h4>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
+            <SelectField label="Tahun Anggaran" value={formData.tahun_anggaran} onChange={e => setFormData({...formData, tahun_anggaran: e.target.value})} required>
+              <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option>
+            </SelectField>
+            <SelectField label="Tahap Anggaran" value={formData.tahap_anggaran} onChange={e => setFormData({...formData, tahap_anggaran: e.target.value})} required>
+              <option value="APBD">APBD</option><option value="Pergeseran 1">Pergeseran 1</option><option value="Pergeseran 2">Pergeseran 2</option><option value="Perubahan">Perubahan (PAK)</option>
+            </SelectField>
+          </div>
         </div>
-        <SelectField label="Pilih Sub Kegiatan" value={formData.kode_subkegiatan} onChange={e => setFormData({...formData, kode_subkegiatan: e.target.value})} required>
-          <option value="">-- Pilih Sub Kegiatan --</option>
-          {subKegiatans.map(s => <option key={s.kode_subkegiatan} value={s.kode_subkegiatan}>[{s.kode_subkegiatan}] {s.nama_subkegiatan}</option>)}
-        </SelectField>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="relative">
-            <InputField label="Kode / Cari Rekening" value={formData.kode_rekening} onChange={e => { setFormData({...formData, kode_rekening: e.target.value}); setShowSuggestions(true); }} onFocus={() => setShowSuggestions(true)} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} placeholder="Ketik 5.1... atau 'Belanja...'" required disabled={!formData.kode_subkegiatan} autoComplete="off" />
-            {showSuggestions && filteredSuggestions.length > 0 && formData.kode_subkegiatan && (
-              <ul className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-auto">
-                {filteredSuggestions.map((s, idx) => (
-                  <li key={idx} onClick={() => { setFormData({...formData, kode_rekening: s.kode_rekening, nama_rekening: s.nama_rekening}); setShowSuggestions(false); }} className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b text-sm">
-                    <span className="font-bold">{s.kode_rekening}</span> <br/> <span className="text-gray-500">{s.nama_rekening}</span>
-                  </li>
-                ))}
-              </ul>
+
+        {/* SECTION 2: PEMILIHAN SUB KEGIATAN & BARANG */}
+        <div className="space-y-8 pt-4">
+          <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
+            <div className="w-1.5 h-6 bg-[#D4AF37] rounded-full"></div>
+            <h4 className="text-sm font-black text-[#0A192F] uppercase tracking-widest">II. Pemilihan Item Belanja</h4>
+          </div>
+          
+          <div className="space-y-8">
+            <SearchableSelect 
+              label="Cari Sub Kegiatan" 
+              placeholder="Pilih sub kegiatan yang dituju..."
+              options={subKegiatans.map(s => ({ value: s.kode_subkegiatan, label: `[${s.kode_subkegiatan}] ${s.nama_subkegiatan}` }))}
+              value={formData.kode_subkegiatan}
+              onChange={(val) => setFormData({...formData, kode_subkegiatan: val, kode_barang: ''})}
+              required
+            />
+
+            <SearchableSelect 
+              label="Cari Barang (SHS)" 
+              placeholder="Ketik nama barang atau kode SHS..."
+              options={shsOptions}
+              value={formData.kode_barang}
+              onChange={handleSelectSHS}
+              required
+              disabled={!formData.kode_subkegiatan}
+            />
+
+            {formData.kode_barang && (
+              <div className="p-8 bg-[#0A192F]/[0.02] rounded-3xl border border-[#0A192F]/10 animate-in zoom-in-95 duration-500 relative group">
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-[#0A192F] rounded-l-3xl"></div>
+                
+                <h5 className="text-[11px] font-black text-[#0A192F] uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
+                  <Info size={18} className="text-[#D4AF37]" /> Detail Standar Harga Terpilih
+                </h5>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                  <div className="lg:col-span-5 space-y-8 border-r border-gray-200 pr-6">
+                    <div>
+                      <p className="text-gray-400 text-[10px] uppercase font-black tracking-widest mb-2">Uraian / Spesifikasi SHS</p>
+                      <p className="text-base font-bold text-[#0A192F] leading-relaxed">{formData.uraian_barang}</p>
+                      <div className="text-xs text-gray-500 italic mt-3 leading-relaxed bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                        {formData.spesifikasi || 'Tidak ada spesifikasi khusus'}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="p-4 bg-white border border-gray-200 rounded-2xl shadow-sm min-w-[140px]">
+                        <p className="text-gray-400 text-[9px] uppercase font-black mb-1">Harga Satuan</p>
+                        <p className="text-lg font-black text-[#0A192F]">{formatRupiah(formData.harga_satuan)}</p>
+                        <p className="text-[10px] text-gray-400 font-bold">per {formData.satuan}</p>
+                      </div>
+                      <div className="flex-1 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+                         <p className="text-gray-400 text-[9px] uppercase font-black mb-1 tracking-widest">Kode Barang</p>
+                         <code className="text-[11px] text-[#0A192F] font-mono font-black break-all">{formData.kode_barang}</code>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-7 space-y-8">
+                    <p className="text-[#0A192F] text-[11px] font-black uppercase tracking-widest flex items-center gap-3">
+                       <Table size={16} className="text-[#D4AF37]" /> Pemetaan Rekening Belanja
+                    </p>
+                    
+                    <div className="grid grid-cols-1 gap-6">
+                      {rekeningOptions.length > 0 ? (
+                        <SelectField 
+                          label="PILIH KODE REKENING (DARI SHS)" 
+                          value={formData.kode_rekening} 
+                          onChange={e => setFormData({...formData, kode_rekening: e.target.value})}
+                          required
+                        >
+                          {rekeningOptions.map(rek => (
+                            <option key={rek} value={rek}>{rek}</option>
+                          ))}
+                        </SelectField>
+                      ) : (
+                        <InputField 
+                          label="KODE REKENING" 
+                          value={formData.kode_rekening} 
+                          onChange={e => setFormData({...formData, kode_rekening: e.target.value})} 
+                          placeholder="Contoh: 5.1.02.01.01.0001"
+                          className="!bg-white font-mono font-bold"
+                        />
+                      )}
+                      
+                      <InputField 
+                        label="NAMA REKENING (URAIAN BELANJA)" 
+                        value={formData.nama_rekening} 
+                        onChange={e => setFormData({...formData, nama_rekening: e.target.value})} 
+                        placeholder="Masukkan nama rekening belanja..."
+                        className="!bg-white font-bold text-[#0A192F]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
-          <InputField label="Pagu Anggaran (Rp)" type="number" value={formData.pagu} onChange={e => setFormData({...formData, pagu: e.target.value})} required disabled={!formData.kode_subkegiatan} />
         </div>
-        <InputField label="Nama Rekening (Uraian)" value={formData.nama_rekening} onChange={e => setFormData({...formData, nama_rekening: e.target.value})} required disabled={!formData.kode_subkegiatan} />
+
+        {/* SECTION 3: PERHITUNGAN & TAGGING */}
+        <div className="space-y-8 pt-4">
+          <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
+            <div className="w-1.5 h-6 bg-[#D4AF37] rounded-full"></div>
+            <h4 className="text-sm font-black text-[#0A192F] uppercase tracking-widest">III. Perhitungan & Klasifikasi</h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+            <div className="md:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+              <InputField label="Koefisien (Keterangan)" value={formData.koefisien_uraian} onChange={e => setFormData({...formData, koefisien_uraian: e.target.value})} placeholder="Contoh: 2 Orang x 10 Hari" disabled={!formData.kode_barang} />
+              <InputField label="Volume (Angka)" type="number" value={formData.volume} onChange={e => setFormData({...formData, volume: e.target.value})} placeholder="Contoh: 20" required disabled={!formData.kode_barang} />
+              
+              <SearchableSelect 
+                label="Paket / Kelompok Belanja" 
+                placeholder="Pilih paket belanja..."
+                options={paketOptions}
+                value={formData.paket_belanja}
+                onChange={(val) => setFormData({...formData, paket_belanja: val})}
+                required
+                disabled={!formData.kode_barang}
+              />
+              <SearchableSelect 
+                label="Keterangan Belanja (Tagging SPJ)" 
+                placeholder="Pilih keterangan tagging..."
+                options={keteranganOptions}
+                value={formData.keterangan_belanja}
+                onChange={(val) => setFormData({...formData, keterangan_belanja: val})}
+                required
+                disabled={!formData.kode_barang}
+              />
+            </div>
+            
+            <div className="md:col-span-4 bg-[#0A192F] p-8 rounded-3xl shadow-2xl shadow-[#0A192F]/20 relative overflow-hidden group min-h-[160px] flex flex-col justify-center">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/10 rounded-full -translate-y-16 translate-x-16 blur-3xl"></div>
+               <p className="text-gray-400 text-[10px] uppercase font-black tracking-[0.2em] mb-2 relative z-10">Total Pagu Anggaran</p>
+               <p className="text-3xl font-black text-[#D4AF37] relative z-10 tracking-tight">{formatRupiah(formData.pagu)}</p>
+               <div className="mt-4 pt-4 border-t border-white/10 relative z-10">
+                 <p className="text-[10px] text-gray-500 italic leading-tight">Terhitung otomatis berdasarkan Volume x Harga Satuan SHS</p>
+               </div>
+            </div>
+          </div>
+        </div>
       </FormContainer>
 
       {/* SECTION EXPORT/IMPORT - Hanya untuk Super Admin */}
@@ -278,11 +491,11 @@ export const RekeningTable = () => {
         <table className="w-full text-sm text-left border-separate border-spacing-0">
           <thead className="bg-[#0A192F] sticky top-0 z-10">
             <tr>
-              <th className="p-4 font-bold text-white border-b border-white/10 uppercase tracking-tighter text-[10px]">Sub Kegiatan</th>
+              <th className="p-4 font-bold text-white border-b border-white/10 uppercase tracking-tighter text-[10px]">Barang / Rincian</th>
               <th className="p-4 font-bold text-white border-b border-white/10 uppercase tracking-tighter text-[10px]">Kode Rekening</th>
-              <th className="p-4 font-bold text-white border-b border-white/10 uppercase tracking-tighter text-[10px]">Nama Rekening</th>
-              <th className="p-4 font-bold text-white border-b border-white/10 uppercase tracking-tighter text-[10px] text-right">Pagu Anggaran</th>
-              <th className="p-4 font-bold text-white border-b border-white/10 uppercase tracking-tighter text-[10px] text-center">Tahun/Tahap</th>
+              <th className="p-4 font-bold text-white border-b border-white/10 uppercase tracking-tighter text-[10px]">Koefisien</th>
+              <th className="p-4 font-bold text-white border-b border-white/10 uppercase tracking-tighter text-[10px] text-right">Pagu</th>
+              <th className="p-4 font-bold text-white border-b border-white/10 uppercase tracking-tighter text-[10px] text-center">Tahap</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -290,13 +503,22 @@ export const RekeningTable = () => {
               <tr><td colSpan="5" className="p-10 text-center text-gray-400 italic">Data tidak ditemukan dalam database atau filter saat ini.</td></tr>
             ) : filtered.map((r, i) => (
               <tr key={i} className="hover:bg-blue-50/30 transition-colors group">
-                <td className="p-4 text-[11px] text-gray-400 group-hover:text-gray-600 transition-colors">{String(r.kode_subkegiatan || '').replace(/^'/, '')}</td>
-                <td className="p-4 font-bold text-[#0A192F]">{String(r.kode_rekening || '').replace(/^'/, '')}</td>
-                <td className="p-4 text-gray-600 text-xs leading-relaxed">{r.nama_rekening}</td>
+                <td className="p-4">
+                   <div className="text-[#0A192F] font-bold text-xs">{r.uraian_barang || r.nama_rekening}</div>
+                   <div className="text-[10px] text-gray-400 mt-0.5">{r.paket_belanja || '-'}</div>
+                </td>
+                <td className="p-4">
+                  <div className="font-bold text-[#0A192F] text-xs">{String(r.kode_rekening || '').replace(/^'/, '')}</div>
+                  <div className="text-[10px] text-gray-400 truncate max-w-[150px]">{String(r.kode_subkegiatan || '').replace(/^'/, '')}</div>
+                </td>
+                <td className="p-4">
+                  <div className="text-xs text-gray-600">{r.koefisien_uraian || `${r.volume} ${r.satuan}`}</div>
+                  <div className="text-[10px] text-gray-400">{formatRupiah(r.harga_satuan)} / {r.satuan}</div>
+                </td>
                 <td className="p-4 text-right font-black text-[#0A192F] tabular-nums whitespace-nowrap">{formatRupiah(r.pagu)}</td>
                 <td className="p-4 text-center">
                   <div className="inline-block text-[9px] font-black px-2 py-1 bg-gray-100 rounded text-gray-500 uppercase tracking-tighter whitespace-nowrap">
-                    {r.tahun_anggaran} | {r.tahap_anggaran}
+                    {r.tahap_anggaran}
                   </div>
                 </td>
               </tr>

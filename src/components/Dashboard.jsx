@@ -1,18 +1,18 @@
 import React, { useState, useMemo } from 'react';
-import { LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, Database, Activity } from 'lucide-react';
 import { SelectField } from './SharedUI';
 import { theme } from '../config/constants';
 import { formatRupiah } from '../utils/helpers';
 import { useAppStore } from '../store/useAppStore';
 
 export default function DashboardView() {
-  const { programs, kegiatans, subKegiatans, rekenings, realisasiGU } = useAppStore();
+  const { programs, kegiatans, subKegiatans, rekenings, realisasiGU, storageStats } = useAppStore();
   const [dashTahun, setDashTahun] = useState(new Date().getFullYear().toString());
   const [dashTahap, setDashTahap] = useState('APBD');
   const [filterProgram, setFilterProgram] = useState('');
   const [filterKegiatan, setFilterKegiatan] = useState('');
   const [filterSubkegiatan, setFilterSubkegiatan] = useState('');
-  
+
   const availableTahun = useMemo(() => {
     const years = new Set();
     rekenings.forEach(r => { if (r.tahun_anggaran) years.add(String(r.tahun_anggaran)); });
@@ -25,7 +25,7 @@ export default function DashboardView() {
     const stages = new Set();
     rekenings.forEach(r => { if (r.tahap_anggaran) stages.add(r.tahap_anggaran); });
     realisasiGU.forEach(r => { if (r.tahap_anggaran) stages.add(r.tahap_anggaran); });
-    
+
     const order = ['APBD', 'Pergeseran 1', 'Pergeseran 2', 'Perubahan'];
     const sorted = Array.from(stages).sort((a, b) => {
       const idxA = order.indexOf(a);
@@ -41,7 +41,7 @@ export default function DashboardView() {
   const dashboardStats = useMemo(() => {
     const activeRekenings = rekenings.filter(r => String(r.tahun_anggaran) === String(dashTahun) && String(r.tahap_anggaran) === String(dashTahap));
     const activeRealisasi = realisasiGU.filter(r => String(r.tahun_anggaran) === String(dashTahun) && String(r.tahap_anggaran) === String(dashTahap) && r.status_nota !== 'Ditolak');
-    
+
     const totalPagu = activeRekenings.reduce((sum, item) => sum + Number(item.pagu || 0), 0);
     const totalRealisasi = activeRealisasi.reduce((sum, item) => sum + Number(item.nominal_nota || 0), 0);
 
@@ -76,9 +76,9 @@ export default function DashboardView() {
     }
 
     const availableKegiatans = filterProgram ? kegiatans.filter(k => k.kode_program === filterProgram) : kegiatans;
-    const availableSubkegiatans = filterKegiatan ? subKegiatans.filter(sk => sk.kode_kegiatan === filterKegiatan) : 
-                                 (filterProgram ? subKegiatans.filter(sk => availableKegiatans.some(ak => ak.kode_kegiatan === sk.kode_kegiatan)) : subKegiatans);
-    
+    const availableSubkegiatans = filterKegiatan ? subKegiatans.filter(sk => sk.kode_kegiatan === filterKegiatan) :
+      (filterProgram ? subKegiatans.filter(sk => availableKegiatans.some(ak => ak.kode_kegiatan === sk.kode_kegiatan)) : subKegiatans);
+
     const subKegiatanStats = availableSubkegiatans.map(sk => {
       const code = String(sk.kode_subkegiatan);
       const subPagu = activeRekenings.filter(r => String(r.kode_subkegiatan) === code).reduce((sum, r) => sum + Number(r.pagu || 0), 0);
@@ -87,10 +87,10 @@ export default function DashboardView() {
       return { ...sk, subPagu, subRealisasi, percentage };
     });
 
-    return { 
-      paguProgram, paguKegiatan, paguSubkegiatan, 
+    return {
+      paguProgram, paguKegiatan, paguSubkegiatan,
       realisasiProgram, realisasiKegiatan, realisasiSubkegiatan,
-      availableKegiatans, availableSubkegiatans, subKegiatanStats 
+      availableKegiatans, availableSubkegiatans, subKegiatanStats
     };
   }, [filterProgram, filterKegiatan, filterSubkegiatan, programs, kegiatans, subKegiatans, dashboardStats]);
 
@@ -118,22 +118,59 @@ export default function DashboardView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold" style={{ color: theme.navy }}>Dashboard Anggaran</h2>
-        <div className="flex gap-4">
-          <div className="w-40">
-            <SelectField value={dashTahun} onChange={e => setDashTahun(e.target.value)}>
-              {availableTahun.map(y => <option key={y} value={y}>Tahun {y}</option>)}
-            </SelectField>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-3" style={{ color: theme.navy }}>
+            <LayoutDashboard className="text-[#D4AF37]" /> Dashboard SatuData
+          </h2>
+          <p className="text-sm text-gray-500 mt-1"></p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex gap-2">
+            <div className="w-40">
+              <SelectField value={dashTahun} onChange={e => setDashTahun(e.target.value)}>
+                {availableTahun.map(y => <option key={y} value={y}>{y}</option>)}
+              </SelectField>
+            </div>
+            <div className="w-48">
+              <SelectField value={dashTahap} onChange={e => setDashTahap(e.target.value)}>
+                {availableTahap.map(t => <option key={t} value={t}>{t}</option>)}
+              </SelectField>
+            </div>
           </div>
-          <div className="w-48">
-            <SelectField value={dashTahap} onChange={e => setDashTahap(e.target.value)}>
-              {availableTahap.map(t => <option key={t} value={t}>{t}</option>)}
-            </SelectField>
-          </div>
+
+          {/* Database Health Widget */}
+          {storageStats && (
+            <div className="flex items-center gap-4 px-5 py-3 bg-white rounded-2xl border shadow-sm group hover:border-[#D4AF37] transition-all duration-500 ml-auto">
+              <div className="p-2 bg-green-50 rounded-xl text-green-600 group-hover:bg-[#D4AF37] group-hover:text-white transition-colors">
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">DB Health</span>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 bg-green-100 text-green-700 rounded-md">Excellent</span>
+                </div>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 transition-all duration-1000"
+                      style={{ width: `${Math.max(2, storageStats.usage_percentage)}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-xs font-black text-[#0A192F]">{storageStats.usage_percentage}%</span>
+                </div>
+              </div>
+              <div className="h-8 w-px bg-gray-100 mx-1"></div>
+              <div className="hidden sm:block">
+                <p className="text-[9px] font-bold text-gray-400 uppercase">Used Cells</p>
+                <p className="text-xs font-black text-[#0A192F]">{storageStats.total_cells_used.toLocaleString()} / 10M</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      
+
       <div className="bg-white rounded-xl shadow-sm border p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <SelectField label="Filter Program" value={filterProgram} onChange={e => { setFilterProgram(e.target.value); setFilterKegiatan(''); setFilterSubkegiatan(''); }}>

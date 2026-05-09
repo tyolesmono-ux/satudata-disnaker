@@ -16,7 +16,7 @@ export const FormRealisasiGU = () => {
   const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({
     tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD', bulan_spj: '', proses_gu: 'GU-01',
-    kode_subkegiatan: '', kode_rekening: '', tanggal_nota: '', keterangan_nota: '', nik_vendor: '', nama_vendor: '', punya_npwp: false,
+    kode_subkegiatan: '', kode_rekening: '', rekening_id: '', tanggal_nota: '', keterangan_nota: '', nik_vendor: '', nama_vendor: '', punya_npwp: false,
     tipe_vendor: '', golongan_vendor: '', kategori_pajak: '', kop_pajak: '', nominal_nota: '', ppn: 0, pph21: 0, pph22: 0, pph23: 0
   });
 
@@ -81,7 +81,7 @@ export const FormRealisasiGU = () => {
   };
 
   const handleSelectSub = (sub) => {
-    setFormData({ ...formData, kode_subkegiatan: sub.kode_subkegiatan, kode_rekening: '' });
+    setFormData({ ...formData, kode_subkegiatan: sub.kode_subkegiatan, kode_rekening: '', rekening_id: '' });
   };
 
   const availableRekenings = useMemo(() => {
@@ -89,23 +89,27 @@ export const FormRealisasiGU = () => {
   }, [rekenings, formData.tahun_anggaran, formData.tahap_anggaran, formData.kode_subkegiatan]);
 
   const handleSelectRek = (rek) => {
-    setFormData({ ...formData, kode_rekening: rek.kode_rekening });
+    // Gunakan timestamp sebagai ID unik untuk membedakan rekening kembar
+    setFormData({ ...formData, kode_rekening: rek.kode_rekening, rekening_id: rek.timestamp });
   };
 
   const { paguTotal, paguTersedia } = useMemo(() => {
-    const rek = availableRekenings.find(r => String(r.kode_rekening) === String(formData.kode_rekening));
+    // Cari spesifik berdasarkan rekening_id (timestamp)
+    const rek = availableRekenings.find(r => String(r.timestamp) === String(formData.rekening_id));
     const total = rek ? Number(rek.pagu) : 0;
     const realData = Array.isArray(realisasiGU) ? realisasiGU : [];
     
+    // Hitung sisa pagu juga harus spesifik ke rekening + paket ini (berdasarkan rekening_id/timestamp)
     const terpakai = realData.filter(r => 
       String(r.tahun_anggaran) === String(formData.tahun_anggaran) && 
       String(r.tahap_anggaran) === String(formData.tahap_anggaran) && 
       String(r.kode_subkegiatan) === String(formData.kode_subkegiatan) && 
-      String(r.kode_rekening) === String(formData.kode_rekening)
+      String(r.kode_rekening) === String(formData.kode_rekening) &&
+      String(r.rekening_id) === String(formData.rekening_id) // Filter tambahan untuk identitas unik
     ).reduce((sum, r) => sum + Number(r.nominal_nota || 0), 0);
     
     return { paguTotal: total, paguTersedia: total - terpakai };
-  }, [availableRekenings, formData.kode_rekening, formData.tahun_anggaran, formData.tahap_anggaran, realisasiGU, formData.kode_subkegiatan]);
+  }, [availableRekenings, formData.rekening_id, formData.kode_rekening, formData.tahun_anggaran, formData.tahap_anggaran, realisasiGU, formData.kode_subkegiatan]);
 
   const handleKategoriChange = (newKategori) => {
     const newData = calculateTaxes(formData.nominal_nota, newKategori, { ...formData, kop_pajak: '' });
@@ -293,13 +297,17 @@ export const FormRealisasiGU = () => {
         <SearchableSelect
           label="Cari Rekening Belanja"
           placeholder="Ketik Kode/Nama Rekening..."
-          value={formData.kode_rekening}
+          value={formData.rekening_id}
           onChange={(val) => {
-            const rek = (availableRekenings || []).find(r => r.kode_rekening === val);
+            const rek = (availableRekenings || []).find(r => String(r.timestamp) === String(val));
             if (rek) handleSelectRek(rek);
-            else setFormData({ ...formData, kode_rekening: '' });
+            else setFormData({ ...formData, kode_rekening: '', rekening_id: '' });
           }}
-          options={(availableRekenings || []).map(r => ({ value: r.kode_rekening, label: `[${r.kode_rekening}] ${r.nama_rekening}` }))}
+          options={(availableRekenings || []).map(r => ({ 
+            value: r.timestamp, 
+            label: `[${r.kode_rekening}] ${r.nama_rekening}`,
+            sublabel: r.paket_belanja ? `📦 ${r.paket_belanja}` : ''
+          }))}
         />
         {formData.kode_rekening && (<div className="flex justify-between text-sm bg-gray-50 p-3 rounded border"><div className="text-gray-600">Pagu Total: {formatRupiah(paguTotal)}</div><div className="font-bold">Sisa Pagu: <span className={paguTersedia > 0 ? "text-green-700" : "text-red-600"}>{formatRupiah(paguTersedia)}</span></div></div>)}
       </div>
@@ -544,7 +552,7 @@ export const FormCetakSPJ = () => {
   } = useAppStore();
 
   const isLoading = modal.show && modal.status === 'loading';
-  const [filter, setFilter] = useState({ tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD', bulan_spj: '', proses_gu: 'GU-01', kode_subkegiatan: '', kode_rekening: '' });
+  const [filter, setFilter] = useState({ tahun_anggaran: new Date().getFullYear().toString(), tahap_anggaran: 'APBD', bulan_spj: '', proses_gu: 'GU-01', kode_subkegiatan: '', kode_rekening: '', rekening_id: '' });
   const [selectedNotes, setSelectedNotes] = useState([]);
   const [showModalBidang, setShowModalBidang] = useState(false);
   const [inputBidang, setInputBidang] = useState('');
@@ -556,7 +564,7 @@ export const FormCetakSPJ = () => {
   const availableRekenings = useMemo(() => (rekenings || []).filter(r => String(r.tahun_anggaran) === String(filter.tahun_anggaran) && String(r.tahap_anggaran) === String(filter.tahap_anggaran) && String(r.kode_subkegiatan) === String(filter.kode_subkegiatan)), [rekenings, filter]);
 
   const availableNotes = useMemo(() => {
-    if (!filter.kode_rekening) return [];
+    if (!filter.rekening_id) return [];
     const realData = Array.isArray(realisasiGU) ? realisasiGU : [];
     return realData.filter(r =>
       String(r.tahun_anggaran) === String(filter.tahun_anggaran) &&
@@ -564,6 +572,7 @@ export const FormCetakSPJ = () => {
       String(r.bulan_spj) === String(filter.bulan_spj) &&
       String(r.proses_gu) === String(filter.proses_gu) &&
       String(r.kode_rekening) === String(filter.kode_rekening) &&
+      String(r.rekening_id) === String(filter.rekening_id) && // Filter spesifik ke ID Unik
       (!r.status_nota || String(r.status_nota) === '' || String(r.status_nota) === 'Draft')
     );
   }, [realisasiGU, filter]);
@@ -627,7 +636,7 @@ export const FormCetakSPJ = () => {
           <SearchableSelect 
             label="Sub Kegiatan" 
             value={filter.kode_subkegiatan} 
-            onChange={val => setFilter({ ...filter, kode_subkegiatan: val, kode_rekening: '' })}
+            onChange={val => setFilter({ ...filter, kode_subkegiatan: val, kode_rekening: '', rekening_id: '' })}
             options={(subKegiatans || []).map(s => ({ value: s.kode_subkegiatan, label: `[${s.kode_subkegiatan}] ${s.nama_subkegiatan}` }))}
             placeholder="Pilih Sub Kegiatan..."
           />
@@ -635,10 +644,18 @@ export const FormCetakSPJ = () => {
         <div className="md:col-span-2">
           <SearchableSelect 
             label="Rekening Belanja" 
-            value={filter.kode_rekening} 
-            onChange={val => setFilter({ ...filter, kode_rekening: val })}
+            value={filter.rekening_id} 
+            onChange={val => {
+              const rek = (availableRekenings || []).find(r => String(r.timestamp) === String(val));
+              if (rek) setFilter({ ...filter, kode_rekening: rek.kode_rekening, rekening_id: rek.timestamp });
+              else setFilter({ ...filter, kode_rekening: '', rekening_id: '' });
+            }}
             disabled={!filter.kode_subkegiatan}
-            options={(availableRekenings || []).map(r => ({ value: r.kode_rekening, label: `[${r.kode_rekening}] ${r.nama_rekening}` }))}
+            options={(availableRekenings || []).map(r => ({ 
+              value: r.timestamp, 
+              label: `[${r.kode_rekening}] ${r.nama_rekening}`,
+              sublabel: r.paket_belanja ? `📦 ${r.paket_belanja}` : ''
+            }))}
             placeholder="Pilih Rekening..."
           />
         </div>

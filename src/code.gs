@@ -2,7 +2,7 @@
  * BACKEND SATUDATA - Dinas Tenaga Kerja
  */
 
-const SHEET_NAMES = ['Program', 'Kegiatan', 'SubKegiatan', 'Rekening', 'PegawaiASN', 'WPPribadi', 'WPPihakKetiga', 'RealisasiGU', 'DataSPJ', 'KOP21', 'KOPUNI'];
+const SHEET_NAMES = ['Program', 'Kegiatan', 'SubKegiatan', 'Rekening', 'RincianBelanja', 'StandarHarga', 'PegawaiASN', 'WPPribadi', 'WPPihakKetiga', 'KOP21', 'KOPUNI', 'RealisasiGU', 'DataSPJ', 'PrintedNotes', 'Tagging'];
 const FOLDER_ID = '1majeQxu3-VGaTaV2afxXS-Dp4-4DV0yq';
 const JWT_SECRET = 'SatudataDisnakerSecret2026!@#'; // Jangan ubah setelah dipakai
 
@@ -197,12 +197,14 @@ function doPost(e) {
       }
     }
 
-    // 4. ACTION GET ALL DATA (Pindahan dari doGet)
+    // 4. ACTION GET ALL DATA
     if (action === 'getAllData') {
       const data = {};
       SHEET_NAMES.forEach(sheetName => {
         data[sheetName.toLowerCase()] = getSheetData(sheetName);
       });
+      // Sertakan statistik storage dasar
+      data.storage_stats = getSpreadsheetStats();
       return createJsonResponse({ status: 'success', data: data });
     }
 
@@ -232,7 +234,24 @@ function doPost(e) {
       } else if (sheetName === 'SubKegiatan') {
         rowData = ["'" + payload.kode_kegiatan, "'" + payload.kode_subkegiatan, payload.nama_subkegiatan, new Date()];
       } else if (sheetName === 'Rekening') {
-        rowData = ["'" + payload.kode_subkegiatan, "'" + payload.kode_rekening, payload.nama_rekening, payload.pagu, payload.tahun_anggaran, payload.tahap_anggaran, new Date()];
+        rowData = [
+          "'" + payload.kode_subkegiatan, 
+          "'" + payload.kode_rekening, 
+          payload.nama_rekening, 
+          payload.pagu, 
+          payload.tahun_anggaran, 
+          payload.tahap_anggaran, 
+          payload.paket_belanja || '',
+          payload.keterangan_belanja || '',
+          "'" + (payload.kode_barang || ''), 
+          payload.uraian_barang || '', 
+          payload.spesifikasi || '', 
+          payload.satuan || '', 
+          payload.harga_satuan || 0,
+          payload.koefisien_uraian || '', 
+          payload.volume || 0, 
+          new Date()
+        ];
       } else if (sheetName === 'PegawaiASN') {
         rowData = ["'" + payload.nip, "'" + payload.nik, "'" + payload.nitku, "'" + payload.npwp, payload.nama, payload.golongan, payload.peran_jabatan, payload.kategori_pegawai, new Date()];
       } else if (sheetName === 'WPPribadi') {
@@ -251,6 +270,7 @@ function doPost(e) {
         rowData = [
           payload.tahun_anggaran, payload.tahap_anggaran, payload.bulan_spj, payload.proses_gu,
           "'" + payload.kode_subkegiatan, "'" + payload.kode_rekening,
+          String(payload.rekening_id || ''),
           payload.tanggal_nota, "'" + payload.nik_vendor, payload.nama_vendor, payload.nominal_nota,
           payload.ppn, payload.pph21, payload.pph22, payload.pph23, 
           payload.keterangan_nota,
@@ -258,6 +278,8 @@ function doPost(e) {
           idNota, 'Draft', '', '', '', 'Draft', '', // id_nota, status_spj, kode_billing, no_ntpn, no_ntb, status_nota, id_spj
           tsUnique // timestamp unik (string)
         ];
+      } else if (sheetName === 'Tagging') {
+        rowData = [payload.kategori, payload.nama_tag, new Date()];
       }
       
       // Untuk RealisasiGU, return lebih awal dengan id_nota & timestamp yang digenerate backend
@@ -294,6 +316,7 @@ function doPost(e) {
         var batchRowData = [
           item.tahun_anggaran, item.tahap_anggaran, item.bulan_spj, item.proses_gu,
           "'" + item.kode_subkegiatan, "'" + item.kode_rekening,
+          String(item.rekening_id || ''),
           item.tanggal_nota, "'" + item.nik_vendor, item.nama_vendor, item.nominal_nota,
           item.ppn || 0, item.pph21 || 0, item.pph22 || 0, item.pph23 || 0,
           item.keterangan_nota,
@@ -308,6 +331,39 @@ function doPost(e) {
       
       recordAuditLog(user.username, user.role, 'BATCH_INSERT', 'RealisasiGU', 'Input masal ' + items.length + ' PPh21');
       return createJsonResponse({ status: 'success', message: items.length + ' nota berhasil disimpan!', results: results });
+    }
+
+    // ===============================================
+    // GENERIC BATCH INSERT (Untuk Import Masal Sheet Apa Saja)
+    // ===============================================
+    if (action === 'batch_insert') {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      let sheet = ss.getSheetByName(sheetName);
+      if (!sheet) sheet = ss.insertSheet(sheetName);
+      if (sheet.getLastRow() === 0) setHeaders(sheet, sheetName);
+      
+      const items = payload.items || [];
+      const tsValue = new Date();
+      
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      
+      items.forEach(item => {
+        const rowData = [];
+        headers.forEach(h => {
+          if (h === 'timestamp') rowData.push(tsValue);
+          else if (item[h] !== undefined) {
+            const textFields = ['kode_barang', 'id_standar_harga', 'kode_rekening_list', 'kode_kelompok_barang'];
+            if (textFields.includes(h)) rowData.push("'" + item[h]);
+            else rowData.push(item[h]);
+          } else {
+            rowData.push('');
+          }
+        });
+        sheet.appendRow(rowData);
+      });
+      
+      recordAuditLog(user.username, user.role, 'BATCH_INSERT', sheetName, 'Import masal ' + items.length + ' data');
+      return createJsonResponse({ status: 'success', message: items.length + ' data berhasil diimport!' });
     }
 
     // ===============================================
@@ -334,6 +390,15 @@ function doPost(e) {
         pagu: headers.indexOf('pagu'),
         tahun: headers.indexOf('tahun_anggaran'),
         tahap: headers.indexOf('tahap_anggaran'),
+        paket: headers.indexOf('paket_belanja'),
+        ket: headers.indexOf('keterangan_belanja'),
+        brg: headers.indexOf('kode_barang'),
+        uraian: headers.indexOf('uraian_barang'),
+        spek: headers.indexOf('spesifikasi'),
+        satuan: headers.indexOf('satuan'),
+        harga: headers.indexOf('harga_satuan'),
+        koef: headers.indexOf('koefisien_uraian'),
+        vol: headers.indexOf('volume'),
         ts: headers.indexOf('timestamp')
       };
       
@@ -356,6 +421,15 @@ function doPost(e) {
           // UPDATE
           if (colIdx.nama !== -1 && item.nama_rekening !== undefined) sheet.getRange(foundRow, colIdx.nama + 1).setValue(item.nama_rekening);
           if (colIdx.pagu !== -1 && item.pagu !== undefined) sheet.getRange(foundRow, colIdx.pagu + 1).setValue(item.pagu);
+          if (colIdx.paket !== -1 && item.paket_belanja !== undefined) sheet.getRange(foundRow, colIdx.paket + 1).setValue(item.paket_belanja);
+          if (colIdx.ket !== -1 && item.keterangan_belanja !== undefined) sheet.getRange(foundRow, colIdx.ket + 1).setValue(item.keterangan_belanja);
+          if (colIdx.brg !== -1 && item.kode_barang !== undefined) sheet.getRange(foundRow, colIdx.brg + 1).setValue("'" + item.kode_barang);
+          if (colIdx.uraian !== -1 && item.uraian_barang !== undefined) sheet.getRange(foundRow, colIdx.uraian + 1).setValue(item.uraian_barang);
+          if (colIdx.spek !== -1 && item.spesifikasi !== undefined) sheet.getRange(foundRow, colIdx.spek + 1).setValue(item.spesifikasi);
+          if (colIdx.satuan !== -1 && item.satuan !== undefined) sheet.getRange(foundRow, colIdx.satuan + 1).setValue(item.satuan);
+          if (colIdx.harga !== -1 && item.harga_satuan !== undefined) sheet.getRange(foundRow, colIdx.harga + 1).setValue(Number(item.harga_satuan));
+          if (colIdx.koef !== -1 && item.koefisien_uraian !== undefined) sheet.getRange(foundRow, colIdx.koef + 1).setValue(item.koefisien_uraian);
+          if (colIdx.vol !== -1 && item.volume !== undefined) sheet.getRange(foundRow, colIdx.vol + 1).setValue(Number(item.volume));
           if (colIdx.ts !== -1) sheet.getRange(foundRow, colIdx.ts + 1).setValue(tsValue);
         } else {
           // INSERT
@@ -367,6 +441,15 @@ function doPost(e) {
             else if (h === 'pagu') rowData.push(Number(item.pagu || 0));
             else if (h === 'tahun_anggaran') rowData.push(String(item.tahun_anggaran || ''));
             else if (h === 'tahap_anggaran') rowData.push(item.tahap_anggaran || '');
+            else if (h === 'paket_belanja') rowData.push(item.paket_belanja || '');
+            else if (h === 'keterangan_belanja') rowData.push(item.keterangan_belanja || '');
+            else if (h === 'kode_barang') rowData.push("'" + (item.kode_barang || ''));
+            else if (h === 'uraian_barang') rowData.push(item.uraian_barang || '');
+            else if (h === 'spesifikasi') rowData.push(item.spesifikasi || '');
+            else if (h === 'satuan') rowData.push(item.satuan || '');
+            else if (h === 'harga_satuan') rowData.push(Number(item.harga_satuan || 0));
+            else if (h === 'koefisien_uraian') rowData.push(item.koefisien_uraian || '');
+            else if (h === 'volume') rowData.push(Number(item.volume || 0));
             else if (h === 'timestamp') rowData.push(tsValue);
             else rowData.push('');
           });
@@ -650,29 +733,78 @@ function createJsonResponse(responseObject) {
 
 function setHeaders(sheet, sheetName) {
   let headers = [];
-  if (sheetName === 'Program') headers = ['kode_program', 'nama_program', 'timestamp'];
-  else if (sheetName === 'Kegiatan') headers = ['kode_program', 'kode_kegiatan', 'nama_kegiatan', 'timestamp'];
-  else if (sheetName === 'SubKegiatan') headers = ['kode_kegiatan', 'kode_subkegiatan', 'nama_subkegiatan', 'timestamp'];
-  else if (sheetName === 'Rekening') headers = ['kode_subkegiatan', 'kode_rekening', 'nama_rekening', 'pagu', 'tahun_anggaran', 'tahap_anggaran', 'timestamp'];
-  else if (sheetName === 'PegawaiASN') headers = ['nip', 'nik', 'nitku', 'npwp', 'nama', 'golongan', 'peran_jabatan', 'kategori_pegawai', 'timestamp'];
-  else if (sheetName === 'WPPribadi') headers = ['nik', 'nitku', 'npwp', 'nama', 'timestamp'];
-  else if (sheetName === 'WPPihakKetiga') headers = ['nik', 'nitku', 'npwp', 'nama_pemilik', 'nama_usaha', 'timestamp'];
-  else if (sheetName === 'KOP21') headers = ['kode_objek_pajak', 'nama_objek_pajak', 'timestamp'];
-  else if (sheetName === 'KOPUNI') headers = ['kode_objek_pajak', 'nama_objek_pajak', 'tarif', 'timestamp'];
-  else if (sheetName === 'RealisasiGU') headers = [
+  const name = String(sheetName || '').trim();
+  const lowerName = name.toLowerCase();
+
+  if (lowerName === 'program') headers = ['kode_program', 'nama_program', 'timestamp'];
+  else if (lowerName === 'kegiatan') headers = ['kode_program', 'kode_kegiatan', 'nama_kegiatan', 'timestamp'];
+  else if (lowerName === 'subkegiatan') headers = ['kode_kegiatan', 'kode_subkegiatan', 'nama_subkegiatan', 'timestamp'];
+  else if (lowerName === 'rekening') headers = [
+    'kode_subkegiatan', 'kode_rekening', 'nama_rekening', 'pagu', 
+    'tahun_anggaran', 'tahap_anggaran', 'paket_belanja', 'keterangan_belanja',
+    'kode_barang', 'uraian_barang', 'spesifikasi', 'satuan', 'harga_satuan',
+    'koefisien_uraian', 'volume', 'timestamp'
+  ];
+  else if (lowerName === 'rincianbelanja') headers = ['kode_subkegiatan', 'kode_rekening', 'kode_rincian', 'nama_rincian', 'pagu', 'tahun_anggaran', 'tahap_anggaran', 'timestamp'];
+  else if (lowerName === 'standarharga') headers = ['kode_kelompok_barang', 'uraian_kelompok_barang', 'id_standar_harga', 'kode_barang', 'uraian_barang', 'spesifikasi', 'satuan', 'harga_satuan', 'kode_rekening_list', 'jenis_standar_harga', 'timestamp'];
+  else if (lowerName === 'pegawaiasn') headers = ['nip', 'nik', 'nitku', 'npwp', 'nama', 'golongan', 'peran_jabatan', 'kategori_pegawai', 'timestamp'];
+  else if (lowerName === 'wppribadi') headers = ['nik', 'nitku', 'npwp', 'nama', 'timestamp'];
+  else if (lowerName === 'wppihakketiga') headers = ['nik', 'nitku', 'npwp', 'nama_pemilik', 'nama_usaha', 'timestamp'];
+  else if (lowerName === 'kop21') headers = ['kode_objek_pajak', 'nama_objek_pajak', 'timestamp'];
+  else if (lowerName === 'kopuni') headers = ['kode_objek_pajak', 'nama_objek_pajak', 'tarif', 'timestamp'];
+  else if (lowerName === 'realisasigu') headers = [
     'tahun_anggaran', 'tahap_anggaran', 'bulan_spj', 'proses_gu', 
-    'kode_subkegiatan', 'kode_rekening', 'tanggal_nota', 'nik_vendor', 'nama_vendor', 'nominal_nota', 
+    'kode_subkegiatan', 'kode_rekening', 'rekening_id', 'tanggal_nota', 'nik_vendor', 'nama_vendor', 'nominal_nota', 
     'ppn', 'pph21', 'pph22', 'pph23', 'keterangan_nota',
     'kop_pajak', 'kap_pajak', 'kjs_pajak', 'nop_pajak',
     'id_nota', 'status_spj', 'kode_billing', 'no_ntpn', 'no_ntb', 'status_nota', 'id_spj',
     'timestamp'
   ];
-  else if (sheetName === 'DataSPJ') headers = [
+  else if (lowerName === 'dataspj') headers = [
     'id_spj', 'no_spj_resmi', 'bidang', 'tanggal_bayar', 'proses_gu', 
     'total_kotor', 'total_ppn', 'total_pph21', 'total_pph22', 'total_pph23', 
     'billing_ppn', 'ntpn_ppn', 'ntb_ppn', 'billing_pph21', 'ntpn_pph21', 'ntb_pph21', 
     'billing_pph22', 'ntpn_pph22', 'ntb_pph22', 'billing_pph23', 'ntpn_pph23', 'ntb_pph23', 
     'status_spj', 'timestamp'
   ];
-  sheet.appendRow(headers);
+  else if (lowerName === 'printednotes') headers = ['timestamp_nota', 'timestamp'];
+  else if (lowerName === 'tagging') headers = ['kategori', 'nama_tag', 'timestamp'];
+  
+  if (headers.length > 0) {
+    sheet.appendRow(headers);
+    // Tambahkan formatting otomatis agar rapi
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#f3f3f3");
+    sheet.setFrozenRows(1);
+  } else {
+    throw new Error("Header rujukan untuk sheet '" + sheetName + "' tidak ditemukan di backend.");
+  }
+}
+
+function getSpreadsheetStats() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+  let totalCells = 0;
+  let totalRows = 0;
+  let detail = [];
+
+  sheets.forEach(sh => {
+    const rows = sh.getMaxRows();
+    const cols = sh.getMaxColumns();
+    const cells = rows * cols;
+    totalCells += cells;
+    totalRows += rows;
+    detail.push({
+      name: sh.getName(),
+      rows: rows,
+      cells: cells
+    });
+  });
+
+  return {
+    total_cells_used: totalCells,
+    total_rows_used: totalRows,
+    max_cells_limit: 10000000, // Limit Google Sheets saat ini
+    usage_percentage: ((totalCells / 10000000) * 100).toFixed(4),
+    detail: detail
+  };
 }
