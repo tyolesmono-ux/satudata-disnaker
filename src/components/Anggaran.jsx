@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, Upload, FileSpreadsheet, Table, Search, Trash2, Info, CheckSquare, Save, RefreshCw, Filter, Tag, Package, Calculator, Edit3, Copy, X, ChevronRight } from 'lucide-react';
-import { FormContainer, InputField, SelectField, SearchableSelect } from './SharedUI';
+import { FormContainer, InputField, SelectField, SearchableSelect, ConfirmDialog } from './SharedUI';
 import { theme } from '../config/constants';
 import { formatRupiah } from '../utils/helpers';
 import { useAppStore } from '../store/useAppStore';
@@ -38,13 +38,36 @@ export const FormProgram = () => {
   const { handleSaveData, modal } = useAppStore();
   const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({ kode_program: '', nama_program: '' });
-  const handleSubmit = async (e) => { e.preventDefault(); const success = await handleSaveData('Program', formData); if (success) setFormData({ kode_program: '', nama_program: '' }); };
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', onConfirm: null });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setConfirmDialog({
+      show: true,
+      title: 'Simpan Program',
+      message: `Apakah Anda yakin ingin menyimpan program "${formData.nama_program}"?`,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, show: false }));
+        const success = await handleSaveData('Program', formData);
+        if (success) setFormData({ kode_program: '', nama_program: '' });
+      }
+    });
+  };
+
   return (
     <div className="max-w-3xl mx-auto">
       <ModernFormCard title="Input Data Program" icon={FileSpreadsheet} onSubmit={handleSubmit} isSubmitting={isLoading}>
         <InputField label="Kode Program" value={formData.kode_program} onChange={e => setFormData({ ...formData, kode_program: e.target.value })} placeholder="Contoh: 1.01" required />
         <InputField label="Nama Program" value={formData.nama_program} onChange={e => setFormData({ ...formData, nama_program: e.target.value })} placeholder="Contoh: Program Penunjang..." required />
       </ModernFormCard>
+
+      <ConfirmDialog
+        show={confirmDialog.show}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, show: false }))}
+      />
     </div>
   );
 };
@@ -53,7 +76,22 @@ export const FormKegiatan = () => {
   const { handleSaveData, modal, programs } = useAppStore();
   const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({ kode_program: '', kode_kegiatan: '', nama_kegiatan: '' });
-  const handleSubmit = async (e) => { e.preventDefault(); const success = await handleSaveData('Kegiatan', formData); if (success) setFormData({ ...formData, kode_kegiatan: '', nama_kegiatan: '' }); };
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', onConfirm: null });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setConfirmDialog({
+      show: true,
+      title: 'Simpan Kegiatan',
+      message: `Apakah Anda yakin ingin menyimpan kegiatan "${formData.nama_kegiatan}"?`,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, show: false }));
+        const success = await handleSaveData('Kegiatan', formData);
+        if (success) setFormData({ kode_program: '', kode_kegiatan: '', nama_kegiatan: '' });
+      }
+    });
+  };
+
   return (
     <div className="max-w-3xl mx-auto">
       <ModernFormCard title="Input Data Kegiatan" icon={FileSpreadsheet} onSubmit={handleSubmit} isSubmitting={isLoading}>
@@ -64,6 +102,14 @@ export const FormKegiatan = () => {
         <InputField label="Kode Kegiatan" value={formData.kode_kegiatan} onChange={e => setFormData({ ...formData, kode_kegiatan: e.target.value })} placeholder="Contoh: 1.01.01" required disabled={!formData.kode_program} />
         <InputField label="Nama Kegiatan" value={formData.nama_kegiatan} onChange={e => setFormData({ ...formData, nama_kegiatan: e.target.value })} required disabled={!formData.kode_program} />
       </ModernFormCard>
+
+      <ConfirmDialog
+        show={confirmDialog.show}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, show: false }))}
+      />
     </div>
   );
 };
@@ -72,7 +118,22 @@ export const FormSubKegiatan = () => {
   const { handleSaveData, modal, kegiatans } = useAppStore();
   const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({ kode_kegiatan: '', kode_subkegiatan: '', nama_subkegiatan: '' });
-  const handleSubmit = async (e) => { e.preventDefault(); const success = await handleSaveData('SubKegiatan', formData); if (success) setFormData({ ...formData, kode_subkegiatan: '', nama_subkegiatan: '' }); };
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', onConfirm: null });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setConfirmDialog({
+      show: true,
+      title: 'Simpan Sub Kegiatan',
+      message: `Apakah Anda yakin ingin menyimpan sub kegiatan "${formData.nama_subkegiatan}"?`,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, show: false }));
+        const success = await handleSaveData('SubKegiatan', formData);
+        if (success) setFormData({ kode_kegiatan: '', kode_subkegiatan: '', nama_subkegiatan: '' });
+      }
+    });
+  };
+
   return (
     <div className="max-w-3xl mx-auto">
       <ModernFormCard title="Input Data Sub Kegiatan" icon={FileSpreadsheet} onSubmit={handleSubmit} isSubmitting={isLoading}>
@@ -83,6 +144,14 @@ export const FormSubKegiatan = () => {
         <InputField label="Kode Sub Kegiatan" value={formData.kode_subkegiatan} onChange={e => setFormData({ ...formData, kode_subkegiatan: e.target.value })} placeholder="Contoh: 1.01.01.2.01" required disabled={!formData.kode_kegiatan} />
         <InputField label="Nama Sub Kegiatan" value={formData.nama_subkegiatan} onChange={e => setFormData({ ...formData, nama_subkegiatan: e.target.value })} required disabled={!formData.kode_kegiatan} />
       </ModernFormCard>
+
+      <ConfirmDialog
+        show={confirmDialog.show}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, show: false }))}
+      />
     </div>
   );
 };
@@ -97,6 +166,7 @@ export const FormRekening = () => {
   const [editItem, setEditItem] = useState(null);
   const [showInitPhase, setShowInitPhase] = useState(false);
   const [initPhaseData, setInitPhaseData] = useState({ source: 'APBD', target: 'Pergeseran 1', year: new Date().getFullYear().toString() });
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', onConfirm: null });
   const koefisienRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -218,8 +288,17 @@ export const FormRekening = () => {
 
   const onInitPhase = async () => {
     if (initPhaseData.source === initPhaseData.target) return showToast('Sumber dan Tujuan tahap tidak boleh sama', 'error');
-    const success = await handleInitializePhase(initPhaseData.source, initPhaseData.target, initPhaseData.year);
-    if (success) setShowInitPhase(false);
+    
+    setConfirmDialog({
+      show: true,
+      title: 'Inisiasi Tahap Baru',
+      message: `Aksi ini akan menyalin seluruh data dari tahap ${initPhaseData.source} ke tahap ${initPhaseData.target} tahun ${initPhaseData.year}. Apakah Anda yakin?`,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, show: false }));
+        const success = await handleInitializePhase(initPhaseData.source, initPhaseData.target, initPhaseData.year);
+        if (success) setShowInitPhase(false);
+      }
+    });
   };
 
   React.useEffect(() => {
@@ -228,9 +307,21 @@ export const FormRekening = () => {
     setFormData(prev => ({ ...prev, pagu: vol * price }));
   }, [formData.volume, formData.harga_satuan]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
+    setConfirmDialog({
+      show: true,
+      title: editItem ? 'Konfirmasi Perubahan' : 'Konfirmasi Simpan',
+      message: `Apakah Anda yakin ingin ${editItem ? 'memperbarui' : 'menyimpan'} rincian belanja "${formData.uraian_barang || formData.nama_rekening}" dengan total ${formatRupiah(formData.pagu)}?`,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, show: false }));
+        await proceedSave();
+      }
+    });
+  };
+
+  const proceedSave = async () => {
     // Pastikan pagu terupdate dengan angka terbaru sebelum dikirim
     const currentVol = Number(formData.volume || 0);
     const currentPrice = Number(formData.harga_satuan || 0);
@@ -247,20 +338,21 @@ export const FormRekening = () => {
     if (success) {
       setEditItem(null);
       setFormData({
-        ...formData,
-        tahun_anggaran: settings.activeTahun,
-        tahap_anggaran: settings.activeTahap,
+        kode_subkegiatan: '',
         kode_rekening: '',
         nama_rekening: '',
         pagu: 0,
+        tahun_anggaran: settings.activeTahun,
+        tahap_anggaran: settings.activeTahap,
+        paket_belanja: '',
+        keterangan_belanja: '',
         kode_barang: '',
         uraian_barang: '',
         spesifikasi: '',
         satuan: '',
         harga_satuan: 0,
         koefisien_uraian: '',
-        volume: 0,
-        keterangan_belanja: ''
+        volume: 0
       });
     }
   };
@@ -541,6 +633,14 @@ export const FormRekening = () => {
 
       {/* Rekening Table */}
       <RekeningTable onEdit={handleEdit} />
+
+      <ConfirmDialog
+        show={confirmDialog.show}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, show: false }))}
+      />
     </div>
   );
 };

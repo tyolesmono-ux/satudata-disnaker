@@ -1,16 +1,54 @@
 // File: src/components/SharedUI.jsx
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Save, ChevronDown, Lock, Search, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Save, ChevronDown, Lock, Search, X, AlertCircle } from 'lucide-react';
 import { theme } from '../config/constants';
 import { useAppStore } from '../store/useAppStore';
+
+// ==========================================
+// PREMIUM CONFIRMATION DIALOG (MODAL)
+// ==========================================
+export const ConfirmDialog = ({ show, title, message, onConfirm, onCancel, confirmText = 'Ya, Lanjutkan', cancelText = 'Batal' }) => {
+  if (!show) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300 px-4">
+      <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
+        <div className="p-8 text-center">
+          <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-amber-100/50">
+            <AlertCircle size={40} className="text-[#D4AF37] animate-bounce" />
+          </div>
+          <h3 className="text-2xl font-black text-[#0A192F] mb-3">{title}</h3>
+          <p className="text-gray-500 text-sm leading-relaxed mb-8 px-4">{message}</p>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <button 
+              onClick={onCancel}
+              className="px-6 py-3.5 border-2 border-gray-100 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-all active:scale-95"
+            >
+              {cancelText}
+            </button>
+            <button 
+              onClick={onConfirm}
+              className="px-6 py-3.5 bg-[#0A192F] text-[#D4AF37] rounded-xl font-black shadow-lg shadow-[#0A192F]/20 hover:bg-[#122442] hover:-translate-y-1 transition-all active:scale-95"
+            >
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
 
 export const FormContainer = ({ title, children, onSubmit, isSubmitting }) => {
   const { user } = useAppStore();
   const isReadOnly = user?.role === 'kepala_bidang';
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md font-['Roboto']">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md font-['Roboto']">
       <div className="px-6 py-5 border-b border-gray-50 bg-gradient-to-r from-gray-50/50 to-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

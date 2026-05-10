@@ -370,6 +370,7 @@ function doPost(e) {
           payload.keterangan_nota,
           "'" + (payload.kop_pajak || ''), "'" + (payload.kap_pajak || ''), "'" + (payload.kjs_pajak || ''), "'" + (payload.nop_pajak || ''),
           idNota, 'Draft', '', '', '', 'Draft', '', // id_nota, status_spj, kode_billing, no_ntpn, no_ntb, status_nota, id_spj
+          payload.volume_nota || 0, payload.satuan_nota || '', // ADDED FOR RINCIAN LEVEL
           tsUnique // timestamp unik (string)
         ];
       } else if (sheetName === 'Tagging') {
@@ -416,6 +417,7 @@ function doPost(e) {
           item.keterangan_nota,
           "'" + (item.kop_pajak || ''), "'" + (item.kap_pajak || ''), "'" + (item.kjs_pajak || ''), "'" + (item.nop_pajak || ''),
           batchIdNota, 'Draft', '', '', '', 'Draft', '',
+          item.volume_nota || 0, item.satuan_nota || '', // ADDED FOR RINCIAN LEVEL
           batchTsUnique
         ];
         sheet.appendRow(batchRowData);
@@ -582,19 +584,35 @@ function doPost(e) {
         const data = sheetRG.getDataRange().getValues();
         const headers = data[0];
         const idNotaCol = headers.indexOf('id_nota');
+        const tsCol = headers.indexOf('timestamp');
         const statusNotaCol = headers.indexOf('status_nota');
         const statusSpjCol = headers.indexOf('status_spj');
         const idSpjCol = headers.indexOf('id_spj');
         
-        if (idNotaCol !== -1) {
-          const idNotaArr = (payload.notes || payload.id_nota || []).map(String);
+        if (idNotaCol !== -1 || tsCol !== -1) {
+          const notesArr = (payload.notes || payload.id_nota || []).map(val => String(val || '').trim());
+          const displayData = sheetRG.getDataRange().getDisplayValues(); // Ambil apa yang terlihat di layar (teks murni)
+          let matchCount = 0;
+          
           for (let i = 1; i < data.length; i++) {
-            if (idNotaArr.includes(String(data[i][idNotaCol]))) {
+            let matched = false;
+            const rowIdNota = String(displayData[i][idNotaCol] || '').trim();
+            const rowTs = tsCol !== -1 ? String(displayData[i][tsCol] || '').trim() : '';
+            
+            // Match against id_nota ATAU timestamp
+            if ((idNotaCol !== -1 && rowIdNota && notesArr.includes(rowIdNota)) || 
+                (rowTs && notesArr.includes(rowTs))) {
+              matched = true;
+            }
+
+            if (matched) {
               if (statusNotaCol !== -1) sheetRG.getRange(i + 1, statusNotaCol + 1).setValue('Diproses');
               if (statusSpjCol !== -1) sheetRG.getRange(i + 1, statusSpjCol + 1).setValue('Diproses');
               if (idSpjCol !== -1) sheetRG.getRange(i + 1, idSpjCol + 1).setValue(String(payload.id_spj));
+              matchCount++;
             }
           }
+          recordAuditLog(user.username, user.role, 'CREATE_BUNDLE', 'RealisasiGU', 'Matched ' + matchCount + ' notes for SPJ ' + payload.id_spj);
         }
       }
       recordAuditLog(user.username, user.role, 'CREATE_BUNDLE', 'DataSPJ', 'Buat Bundle SPJ: ' + payload.id_spj);
@@ -855,7 +873,7 @@ function setHeaders(sheet, sheetName) {
     'ppn', 'pph21', 'pph22', 'pph23', 'keterangan_nota',
     'kop_pajak', 'kap_pajak', 'kjs_pajak', 'nop_pajak',
     'id_nota', 'status_spj', 'kode_billing', 'no_ntpn', 'no_ntb', 'status_nota', 'id_spj',
-    'timestamp'
+    'volume_nota', 'satuan_nota', 'timestamp'
   ];
   else if (lowerName === 'dataspj') headers = [
     'id_spj', 'no_spj_resmi', 'bidang', 'tanggal_bayar', 'proses_gu', 
@@ -906,3 +924,22 @@ function getSpreadsheetStats() {
     detail: detail
   };
 }
+
+function migrateMissingIdNota() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('RealisasiGU');
+  if (!sheet) return;
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idNotaCol = headers.indexOf('id_nota');
+  var tsCol = headers.indexOf('timestamp');
+  
+  if (idNotaCol === -1) return;
+
+  for (var i = 1; i < data.length; i++) {
+    if (!data[i][idNotaCol] || String(data[i][idNotaCol]).trim() === '') {
+      var newIdNota = 'NT-' + new Date().getTime() + '-' + Math.floor(Math.random() * 1000);
+      sheet.getRange(i+1, idNotaCol+1).setValue(newIdNota);
+      Utilities.sleep(10); // Avoid hitting rate limits if data is huge
+    }
+  }
+}

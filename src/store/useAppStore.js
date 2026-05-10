@@ -299,7 +299,11 @@ export const useAppStore = create((set, get) => ({
         }];
       }
       
-      set({ ...updateState, modal: { show: true, status: 'success', message: `Data ${sheetName} berhasil disimpan!` } });
+      const successMsg = sheetName === 'RealisasiGU' && payload.proses_gu 
+        ? `Data ${payload.proses_gu} berhasil disimpan!`
+        : `Data ${sheetName} berhasil disimpan!`;
+        
+      set({ ...updateState, modal: { show: true, status: 'success', message: successMsg } });
       get().fetchAllData(); // Background sync
       return true; 
     } catch (error) {

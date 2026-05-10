@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { InputField, SelectField } from './SharedUI';
+import { InputField, SelectField, ConfirmDialog } from './SharedUI';
 import { GAS_URL } from '../config/constants';
 import { fetchWithTimeout } from '../utils/api';
 import { formatRupiah } from '../utils/helpers';
@@ -442,35 +442,13 @@ export default function VerifikasiSPJ() {
       )}
 
       {/* PREMIUM CONFIRM DIALOG */}
-      {confirmDialog.show && createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
-            <div className="p-8 text-center">
-              <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-amber-100/50">
-                <AlertCircle size={40} className="text-[#D4AF37] animate-bounce" />
-              </div>
-              <h3 className="text-2xl font-black text-[#0A192F] mb-3">{confirmDialog.title}</h3>
-              <p className="text-gray-500 text-sm leading-relaxed mb-8 px-4">{confirmDialog.message}</p>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <button 
-                  onClick={() => setConfirmDialog({ ...confirmDialog, show: false })}
-                  className="px-6 py-3.5 border-2 border-gray-100 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-all active:scale-95"
-                >
-                  Batal
-                </button>
-                <button 
-                  onClick={confirmDialog.onConfirm}
-                  className="px-6 py-3.5 bg-[#0A192F] text-[#D4AF37] rounded-xl font-black shadow-lg shadow-[#0A192F]/20 hover:bg-[#122442] hover:-translate-y-1 transition-all active:scale-95"
-                >
-                  Ya, Lanjutkan
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <ConfirmDialog
+        show={confirmDialog.show}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ ...confirmDialog, show: false })}
+      />
     </div>
   );
 };
