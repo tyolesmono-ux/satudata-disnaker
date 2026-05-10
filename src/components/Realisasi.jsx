@@ -10,17 +10,27 @@ export const FormRealisasiGU = () => {
   const {
     subKegiatans, rekenings, realisasiGU, setRealisasiGU,
     pegawaiASN, wpPribadi, wpPihakKetiga, showToast, kop21, kopUNI,
-    handleSaveData, buatSPJBundle, batchInsertRealisasi, modal, token
+    handleSaveData, buatSPJBundle, batchInsertRealisasi, modal, token,
+    settings
   } = useAppStore();
 
   const isLoading = modal.show && modal.status === 'loading';
   const [formData, setFormData] = useState({
-    tahun_anggaran: useAppStore.getState().settings.activeTahun, 
-    tahap_anggaran: useAppStore.getState().settings.activeTahap, 
+    tahun_anggaran: settings.activeTahun, 
+    tahap_anggaran: settings.activeTahap, 
     bulan_spj: '', proses_gu: 'GU-01',
     kode_subkegiatan: '', kode_rekening: '', rekening_id: '', tanggal_nota: '', keterangan_nota: '', nik_vendor: '', nama_vendor: '', punya_npwp: false,
     tipe_vendor: '', golongan_vendor: '', kategori_pajak: '', kop_pajak: '', nominal_nota: '', ppn: 0, pph21: 0, pph22: 0, pph23: 0
   });
+
+  // Sync settings when they change globally
+  React.useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      tahun_anggaran: settings.activeTahun,
+      tahap_anggaran: settings.activeTahap
+    }));
+  }, [settings]);
 
   // Helper: parse Kode Objek Pajak menjadi KOP, KAP, KJS, NOP
   const parseKOP = (kategori, kopVal) => {
@@ -132,7 +142,10 @@ export const FormRealisasiGU = () => {
     const success = await handleSaveData('RealisasiGU', { ...formData, ...kopData });
     if (success) {
       setFormData(prev => ({
-        ...prev, nik_vendor: '', nama_vendor: '', nominal_nota: '',
+        ...prev, 
+        tahun_anggaran: settings.activeTahun,
+        tahap_anggaran: settings.activeTahap,
+        nik_vendor: '', nama_vendor: '', nominal_nota: '',
         keterangan_nota: '', ppn: 0, pph21: 0, pph22: 0, pph23: 0
       }));
     }

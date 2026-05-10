@@ -88,7 +88,11 @@ export const FormSubKegiatan = () => {
 };
 
 export const FormRekening = () => {
-  const { handleSaveData, handleUpdateData, handleInitializePhase, modal, subKegiatans, rekenings, standarharga, fetchAllData, setModal, showToast, user, taggings } = useAppStore();
+  const { 
+    handleSaveData, handleUpdateData, handleInitializePhase, modal, 
+    subKegiatans, rekenings, standarharga, fetchAllData, setModal, 
+    showToast, user, taggings, settings 
+  } = useAppStore();
   const isLoading = modal.show && modal.status === 'loading';
   const [editItem, setEditItem] = useState(null);
   const [showInitPhase, setShowInitPhase] = useState(false);
@@ -100,8 +104,8 @@ export const FormRekening = () => {
     kode_rekening: '',
     nama_rekening: '',
     pagu: '',
-    tahun_anggaran: useAppStore.getState().settings.activeTahun,
-    tahap_anggaran: useAppStore.getState().settings.activeTahap,
+    tahun_anggaran: settings.activeTahun,
+    tahap_anggaran: settings.activeTahap,
     paket_belanja: '',
     keterangan_belanja: '',
     kode_barang: '',
@@ -112,6 +116,17 @@ export const FormRekening = () => {
     koefisien_uraian: '',
     volume: ''
   });
+
+  // Sync settings when they change (but only if not editing)
+  React.useEffect(() => {
+    if (!editItem) {
+      setFormData(prev => ({
+        ...prev,
+        tahun_anggaran: settings.activeTahun,
+        tahap_anggaran: settings.activeTahap
+      }));
+    }
+  }, [settings, editItem]);
 
   const [rekeningOptions, setRekeningOptions] = useState([]);
   const [importProgress, setImportProgress] = useState(0);
@@ -194,8 +209,8 @@ export const FormRekening = () => {
     setEditItem(null);
     setFormData({
       kode_subkegiatan: '', kode_rekening: '', nama_rekening: '', pagu: '',
-      tahun_anggaran: useAppStore.getState().settings.activeTahun, 
-      tahap_anggaran: useAppStore.getState().settings.activeTahap,
+      tahun_anggaran: settings.activeTahun, 
+      tahap_anggaran: settings.activeTahap,
       paket_belanja: '', keterangan_belanja: '', kode_barang: '', uraian_barang: '',
       spesifikasi: '', satuan: '', harga_satuan: '', koefisien_uraian: '', volume: ''
     });
@@ -233,6 +248,8 @@ export const FormRekening = () => {
       setEditItem(null);
       setFormData({
         ...formData,
+        tahun_anggaran: settings.activeTahun,
+        tahap_anggaran: settings.activeTahap,
         kode_rekening: '',
         nama_rekening: '',
         pagu: 0,
@@ -578,18 +595,15 @@ export const RekeningTable = ({ onEdit }) => {
 
         {/* Row 2: Sub-Kegiatan Filter */}
         <div className="relative">
-          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <select 
-            value={filterSub} 
-            onChange={e => setFilterSub(e.target.value)} 
-            className="w-full pl-12 pr-10 py-3 bg-gray-50/50 border border-gray-100 rounded-xl text-sm font-bold text-gray-700 focus:bg-white focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 outline-none transition-all appearance-none cursor-pointer"
-          >
-            <option value="">Semua Sub Kegiatan (Tanpa Filter)</option>
-            {availableSubInTable.map(s => <option key={s.kode_subkegiatan} value={s.kode_subkegiatan}>[{s.kode_subkegiatan}] {s.nama_subkegiatan}</option>)}
-          </select>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-            <ChevronRight size={16} className="rotate-90" />
-          </div>
+          <SearchableSelect 
+            placeholder="Semua Sub Kegiatan (Tanpa Filter)"
+            options={availableSubInTable.map(s => ({ 
+              value: s.kode_subkegiatan, 
+              label: `[${s.kode_subkegiatan}] ${s.nama_subkegiatan}` 
+            }))}
+            value={filterSub}
+            onChange={setFilterSub}
+          />
         </div>
 
         {/* Row 3: Search Field */}

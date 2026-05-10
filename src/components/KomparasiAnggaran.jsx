@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { BarChart, TrendingUp, TrendingDown, ArrowRightLeft, HelpCircle, Filter, AlertCircle } from 'lucide-react';
-import { SelectField } from './SharedUI';
+import React, { useState, useMemo, useEffect } from 'react';
+import { BarChart, TrendingUp, TrendingDown, ArrowRightLeft, HelpCircle, Filter, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SelectField, SearchableSelect } from './SharedUI';
 import { formatRupiah } from '../utils/helpers';
 import { theme } from '../config/constants';
 import { useAppStore } from '../store/useAppStore';
@@ -54,6 +54,9 @@ export const KomparasiAnggaran = () => {
   const [tahunAnggaran, setTahunAnggaran] = useState(new Date().getFullYear().toString());
   const [tahapAwal, setTahapAwal] = useState('APBD');
   const [tahapAkhir, setTahapAkhir] = useState('Pergeseran 1');
+  const [filterSub, setFilterSub] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // Dapatkan daftar tahun unik dari data
   const availableTahun = useMemo(() => {
@@ -77,7 +80,7 @@ export const KomparasiAnggaran = () => {
     });
   }, [rekenings]);
 
-  const { dataKomparasi, summary } = useMemo(() => {
+  const { dataFull, summary } = useMemo(() => {
     const filteredRekenings = (rekenings || []).filter(r => String(r.tahun_anggaran) === tahunAnggaran);
 
     // Map sub kegiatan
@@ -115,9 +118,6 @@ export const KomparasiAnggaran = () => {
     const finalData = [];
 
     mapData.forEach(item => {
-      totalInduk += item.paguInduk;
-      totalPerubahan += item.paguPerubahan;
-
       const selisih = item.paguPerubahan - item.paguInduk;
       let status = '';
       if (item.paguInduk === 0 && item.paguPerubahan > 0) status = 'Rekening Baru';
@@ -127,7 +127,15 @@ export const KomparasiAnggaran = () => {
 
       if (status !== 'Tetap') {
         finalData.push({ ...item, selisih, status });
+        // Hanya tambahkan ke total jika masuk kriteria komparasi (mengalami perubahan)
+        // Namun, jika user ingin total keseluruhan tahap, kita gunakan data mapData awal
       }
+    });
+
+    // Hitung summary dari data mentah agar akurat (mencakup item yang tetap)
+    mapData.forEach(item => {
+      totalInduk += item.paguInduk;
+      totalPerubahan += item.paguPerubahan;
     });
 
     finalData.sort((a, b) => {
@@ -138,7 +146,7 @@ export const KomparasiAnggaran = () => {
     });
 
     return {
-      dataKomparasi: finalData,
+      dataFull: finalData,
       summary: {
         totalInduk,
         totalPerubahan,
@@ -147,8 +155,37 @@ export const KomparasiAnggaran = () => {
     };
   }, [rekenings, subKegiatans, tahunAnggaran, tahapAwal, tahapAkhir]);
 
+  // Derived filterable options for sub kegiatan
+  const subOptions = useMemo(() => {
+    const codes = new Set(dataFull.map(d => d.kode_subkegiatan));
+    return subKegiatans
+      .filter(s => codes.has(s.kode_subkegiatan))
+      .map(s => ({ value: s.kode_subkegiatan, label: `[${s.kode_subkegiatan}] ${s.nama_subkegiatan}` }));
+  }, [dataFull, subKegiatans]);
+
+  // Filtered and Paginated data
+  const { dataDisplay, totalItems } = useMemo(() => {
+    let filtered = dataFull;
+    if (filterSub) {
+      filtered = filtered.filter(d => d.kode_subkegiatan === filterSub);
+    }
+    
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return {
+      dataDisplay: filtered.slice(start, start + ITEMS_PER_PAGE),
+      totalItems: filtered.length
+    };
+  }, [dataFull, filterSub, currentPage]);
+
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterSub, tahunAnggaran, tahapAwal, tahapAkhir]);
+
   return (
-    <div className="max-w-7xl mx-auto space-y-8 px-4 sm:px-6 lg:px-0">
+    <div className="max-w-7xl mx-auto space-y-8 px-4 sm:px-6 lg:px-0 font-['Roboto']">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -156,11 +193,11 @@ export const KomparasiAnggaran = () => {
             <div className="p-2.5 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl shadow-lg">
               <BarChart size={24} className="text-white" />
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight font-['Roboto']">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
               Analisis Pergeseran Anggaran
             </h1>
           </div>
-          <p className="text-gray-500 text-sm ml-14 font-['Roboto']">
+          <p className="text-gray-500 text-sm ml-14">
             Membandingkan Pagu Antar Tahapan Anggaran Untuk Melihat Perubahan Dan Efisiensi
           </p>
         </div>
@@ -171,38 +208,40 @@ export const KomparasiAnggaran = () => {
         <div className="px-6 py-4 border-b border-gray-50 bg-gradient-to-r from-gray-50/50 to-white rounded-t-2xl">
           <div className="flex items-center gap-2">
             <Filter size={16} className="text-gray-400" />
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider font-['Roboto']">Filter Analisis</h3>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Filter Analisis</h3>
           </div>
         </div>
         <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             <SelectField
               label="Tahun Anggaran"
               value={tahunAnggaran}
               onChange={e => setTahunAnggaran(e.target.value)}
-              className="font-['Roboto']"
             >
               {availableTahun.map(y => <option key={y} value={y}>{y}</option>)}
             </SelectField>
             <SelectField
-              label="Tahap Awal (Pagu Induk)"
+              label="Tahap Awal"
               value={tahapAwal}
               onChange={e => setTahapAwal(e.target.value)}
             >
               {availableTahap.map(t => <option key={t} value={t}>{t}</option>)}
             </SelectField>
             <SelectField
-              label="Tahap Akhir (Pagu Banding)"
+              label="Tahap Akhir"
               value={tahapAkhir}
               onChange={e => setTahapAkhir(e.target.value)}
             >
               {availableTahap.map(t => <option key={t} value={t}>{t}</option>)}
             </SelectField>
-            <div className="flex items-end">
-              <div className="w-full bg-gray-50 rounded-xl p-3 text-center border border-gray-100">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Perbandingan</p>
-                <p className="text-sm font-bold text-gray-700 mt-1">{tahapAwal} → {tahapAkhir}</p>
-              </div>
+            <div className="lg:col-span-2">
+              <SearchableSelect 
+                label="Filter Sub Kegiatan"
+                placeholder="Semua Sub Kegiatan"
+                options={subOptions}
+                value={filterSub}
+                onChange={setFilterSub}
+              />
             </div>
           </div>
         </div>
@@ -232,7 +271,7 @@ export const KomparasiAnggaran = () => {
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Net Perubahan</span>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500 mb-1 font-['Roboto']">
+            <p className="text-sm font-medium text-gray-500 mb-1">
               {summary.defisitSurplus > 0 ? 'Anggaran Bertambah' : summary.defisitSurplus < 0 ? 'Anggaran Berkurang' : 'Tidak Ada Perubahan'}
             </p>
             <p className={`text-2xl font-black tracking-tight ${summary.defisitSurplus > 0 ? 'text-emerald-600' : summary.defisitSurplus < 0 ? 'text-rose-600' : 'text-gray-500'}`}>
@@ -246,71 +285,123 @@ export const KomparasiAnggaran = () => {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-md">
         <div className="px-6 py-4 border-b border-gray-50 bg-gradient-to-r from-gray-50/50 to-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-gray-700 font-['Roboto']">Detail Rekening yang Mengalami Perubahan</h3>
+            <h3 className="text-sm font-bold text-gray-700">Detail Rekening yang Mengalami Perubahan</h3>
             <span className="px-2.5 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold">
-              {dataKomparasi.length} item
+              {totalItems} item
             </span>
           </div>
           <p className="text-[11px] text-gray-400">Hanya Menampilkan Rekening Dengan Perubahan Pagu</p>
         </div>
 
-        {dataKomparasi.length === 0 ? (
+        {totalItems === 0 ? (
           <div className="p-12 text-center">
             <div className="flex flex-col items-center justify-center text-gray-400">
               <HelpCircle size={48} className="mb-3 opacity-50" />
-              <p className="text-base font-semibold text-gray-500 font-['Roboto']">Tidak Ada Perubahan</p>
+              <p className="text-base font-semibold text-gray-500">Tidak Ada Perubahan</p>
               <p className="text-sm text-gray-400 mt-1">Semua Pagu Masih Tetap Atau Data Tidak Tersedia Pada Tahap Yang Dipilih.</p>
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm font-['Roboto']">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Sub Kegiatan</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Rekening</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Pagu Awal</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Pagu Akhir</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Selisih</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {dataKomparasi.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50/50 transition-colors duration-150">
-                    <td className="px-6 py-4 align-top">
-                      <div className="text-xs font-mono text-blue-600 font-bold mb-1">{item.kode_subkegiatan}</div>
-                      <div className="text-sm text-gray-700 line-clamp-2" title={item.nama_subkegiatan}>
-                        {item.nama_subkegiatan.length > 60 ? `${item.nama_subkegiatan.substring(0, 60)}...` : item.nama_subkegiatan}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 align-top">
-                      <div className="text-xs font-mono text-gray-500 mb-1">{item.kode_rekening}</div>
-                      <div className="font-semibold text-gray-800">{item.nama_rekening}</div>
-                    </td>
-                    <td className="px-6 py-4 text-right font-medium text-gray-600 tabular-nums">
-                      {formatRupiah(item.paguInduk)}
-                    </td>
-                    <td className="px-6 py-4 text-right font-bold text-amber-600 tabular-nums">
-                      {formatRupiah(item.paguPerubahan)}
-                    </td>
-                    <td className={`px-6 py-4 text-right font-bold tabular-nums ${item.selisih > 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
-                      {item.selisih > 0 ? '+' : ''}{formatRupiah(item.selisih)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={item.status} />
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Sub Kegiatan</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Rekening</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Pagu Awal</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Pagu Akhir</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Selisih</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {dataDisplay.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50/50 transition-colors duration-150">
+                      <td className="px-6 py-4 align-top">
+                        <div className="text-xs font-mono text-blue-600 font-bold mb-1">{item.kode_subkegiatan}</div>
+                        <div className="text-sm text-gray-700 line-clamp-2" title={item.nama_subkegiatan}>
+                          {item.nama_subkegiatan.length > 60 ? `${item.nama_subkegiatan.substring(0, 60)}...` : item.nama_subkegiatan}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 align-top">
+                        <div className="text-xs font-mono text-gray-500 mb-1">{item.kode_rekening}</div>
+                        <div className="font-semibold text-gray-800">{item.nama_rekening}</div>
+                      </td>
+                      <td className="px-6 py-4 text-right font-medium text-gray-600 tabular-nums">
+                        {formatRupiah(item.paguInduk)}
+                      </td>
+                      <td className="px-6 py-4 text-right font-bold text-amber-600 tabular-nums">
+                        {formatRupiah(item.paguPerubahan)}
+                      </td>
+                      <td className={`px-6 py-4 text-right font-bold tabular-nums ${item.selisih > 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
+                        {item.selisih > 0 ? '+' : ''}{formatRupiah(item.selisih)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <StatusBadge status={item.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                <div className="text-xs text-gray-500">
+                  Menampilkan <span className="font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span className="font-bold">{Math.min(currentPage * ITEMS_PER_PAGE, totalItems)}</span> dari <span className="font-bold">{totalItems}</span> data
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) pageNum = i + 1;
+                      else if (currentPage <= 3) pageNum = i + 1;
+                      else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                      else pageNum = currentPage - 2 + i;
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                            currentPage === pageNum
+                              ? 'bg-gray-900 text-white shadow-md'
+                              : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* Catatan kaki */}
-      {dataKomparasi.length > 0 && (
-        <div className="text-xs text-gray-400 text-center py-2 font-['Roboto']">
+      {totalItems > 0 && (
+        <div className="text-xs text-gray-400 text-center py-2">
           * Hanya Menampilkan Rekening Dengan Perubahan Nilai Dari {tahapAwal} Ke {tahapAkhir}
         </div>
       )}
