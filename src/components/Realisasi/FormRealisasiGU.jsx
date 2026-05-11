@@ -43,7 +43,7 @@ export const FormRealisasiGU = () => {
   const [masalNominal, setMasalNominal] = useState('');
   const [masalNominals, setMasalNominals] = useState({});
   const [isMasalSubmitting, setIsMasalSubmitting] = useState(false);
-  
+
   useEffect(() => {
     setFormData(prev => ({ ...prev, tahun_anggaran: settings.activeTahun, tahap_anggaran: settings.activeTahap }));
   }, [settings]);
@@ -162,7 +162,7 @@ export const FormRealisasiGU = () => {
   const calculateTaxes = (nominal, kategori, dataState) => {
     const nom = Number(nominal) || 0;
     let calcPpn = 0, calcPph21 = 0, calcPph22 = 0, calcPph23 = 0;
-    
+
     if (kategori === 'PPh21') {
       if (dataState.tipe_vendor === 'ASN') {
         if (dataState.golongan_vendor === 'III') calcPph21 = Math.round(nom * 0.05);
@@ -172,15 +172,15 @@ export const FormRealisasiGU = () => {
       }
     }
     else if (kategori === 'PPh22 + PPN') {
-      if (nom > 2000000) { 
-        calcPpn = Math.round(nom * 0.11); 
-        calcPph22 = dataState.punya_npwp ? Math.round(nom * 0.015) : Math.round(nom * 0.03); 
+      if (nom > 2000000) {
+        calcPpn = Math.round(nom * 0.11);
+        calcPph22 = dataState.punya_npwp ? Math.round(nom * 0.015) : Math.round(nom * 0.03);
       }
     }
     else if (kategori === 'PPh23') {
       calcPph23 = dataState.punya_npwp ? Math.round(nom * 0.02) : Math.round(nom * 0.04);
     }
-    
+
     return { ppn: calcPpn, pph21: calcPph21, pph22: calcPph22, pph23: calcPph23 };
   };
 
@@ -196,11 +196,11 @@ export const FormRealisasiGU = () => {
 
   const handleKategoriChange = (val) => {
     const parsed = parseKOP(val, '');
-    setFormData(prev => ({ 
-      ...prev, 
-      kategori_pajak: val, 
+    setFormData(prev => ({
+      ...prev,
+      kategori_pajak: val,
       ...parsed,
-      ppn: 0, pph21: 0, pph22: 0, pph23: 0 
+      ppn: 0, pph21: 0, pph22: 0, pph23: 0
     }));
   };
 
@@ -238,10 +238,10 @@ export const FormRealisasiGU = () => {
     const itemsToSave = activeItems.map(item => {
       const stats = calculateRemaining(item.timestamp, rekenings, realisasiGU);
       const nominal = Number(gridVolumes[item.timestamp]) * stats.hargaSatuan;
-      
+
       // Calculate tax for THIS specific item
       let itemPpn = 0, itemPph21 = 0, itemPph22 = 0, itemPph23 = 0;
-      
+
       if (formData.kategori_pajak === 'PPh21') {
         if (formData.tipe_vendor === 'ASN') {
           if (formData.golongan_vendor === 'III') itemPph21 = Math.round(nominal * 0.05);
@@ -328,7 +328,7 @@ export const FormRealisasiGU = () => {
   return (
     <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 animate-in fade-in zoom-in duration-300">
       <div className="bg-[#0A192F] p-6 text-white flex justify-between items-center">
-        <h2 className="text-xl font-black flex items-center gap-3"><FileText className="text-[#D4AF37]" /> INPUT REALISASI SPJ</h2>
+        <h2 className="text-xl font-black flex items-center gap-3"><FileText className="text-[#D4AF37]" /> INPUT REALISASI </h2>
         <div className="px-4 py-1.5 bg-white/10 rounded-full text-xs font-bold uppercase tracking-widest">{formData.proses_gu}</div>
       </div>
 
@@ -341,7 +341,7 @@ export const FormRealisasiGU = () => {
           <SelectField label="Tahap" value={formData.tahap_anggaran} disabled onChange={() => { }}>
             <option value={settings.activeTahap}>{settings.activeTahap}</option>
           </SelectField>
-          <SelectField label="Bulan SPJ" value={formData.bulan_spj} onChange={e => setFormData({ ...formData, bulan_spj: e.target.value })} required>
+          <SelectField label="Bulan Realisasi" value={formData.bulan_spj} onChange={e => setFormData({ ...formData, bulan_spj: e.target.value })} required>
             <option value="">-- Pilih Bulan --</option>
             {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(b => <option key={b} value={b}>{b}</option>)}
           </SelectField>
@@ -418,9 +418,9 @@ export const FormRealisasiGU = () => {
                         const parsed = parseKOP(formData.kategori_pajak, val);
                         setFormData({ ...formData, ...parsed });
                       }}
-                      options={(formData.kategori_pajak === 'PPh21' ? kop21 : kopUNI).map(k => ({ 
-                        value: k.kode_objek_pajak, 
-                        label: `${k.kode_objek_pajak} — ${k.nama_objek_pajak}` 
+                      options={(formData.kategori_pajak === 'PPh21' ? kop21 : kopUNI).map(k => ({
+                        value: k.kode_objek_pajak,
+                        label: `${k.kode_objek_pajak} — ${k.nama_objek_pajak}`
                       }))}
                     />
                   </div>
@@ -540,7 +540,7 @@ export const FormRealisasiGU = () => {
 
                 <div className="pt-4">
                   <button type="button" onClick={handleSubmitGrid} className="w-full py-5 bg-[#0A192F] text-[#D4AF37] font-black rounded-2xl hover:bg-[#122442] hover:scale-[1.01] transition-all flex items-center justify-center gap-3 shadow-2xl shadow-[#0A192F]/20 uppercase tracking-widest text-lg">
-                    <Save size={24} /> Simpan Realisasi SPJ
+                    <Save size={24} /> Simpan Realisasi
                   </button>
                   <p className="text-center text-gray-400 text-[10px] mt-4 uppercase font-bold tracking-widest">Pastikan data vendor dan nominal sudah benar sebelum menyimpan.</p>
                 </div>

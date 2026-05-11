@@ -98,13 +98,13 @@ export default function App() {
         {/* Logo Area - Compact Premium Style */}
         <div className={`relative pt-14 pb-4 mb-4 flex flex-col items-center transition-all duration-300 ${sidebarOpen ? 'px-6' : 'px-4'}`}>
           <div className={`bg-white rounded-3xl shadow-xl flex flex-col items-center transition-all duration-500 group overflow-hidden ${sidebarOpen ? 'p-4 w-full h-28 justify-center' : 'p-2 w-10 h-10'}`}>
-            <img 
-              src={logo} 
-              alt="SatuData Logo" 
-              className={`transition-all duration-500 object-contain ${sidebarOpen ? 'h-20 w-auto' : 'h-6 w-6'}`} 
+            <img
+              src={logo}
+              alt="SatuData Logo"
+              className={`transition-all duration-500 object-contain ${sidebarOpen ? 'h-20 w-auto' : 'h-6 w-6'}`}
             />
           </div>
-          
+
           {sidebarOpen && (
             <p className="mt-4 text-[9px] font-black text-white/40 uppercase tracking-[0.2em] animate-in fade-in duration-700">
               Disnaker Kota Surakarta
@@ -230,7 +230,7 @@ export default function App() {
             {sidebarOpen && expandedMenu === 'realisasi' && (
               <div className="ml-4 pl-4 mt-1 border-l border-gray-700/50 space-y-1">
                 <NavLink to="/spj/input" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
-                  Input SPJ (GU)
+                  Input Realisasi
                 </NavLink>
                 <NavLink to="/spj/pengajuan" className={({ isActive }) => `block px-4 py-2 rounded-lg text-sm ${isActive ? 'text-amber-400 bg-amber-500/10 font-medium' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
                   Pengajuan SPJ
